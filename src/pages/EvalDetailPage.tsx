@@ -16,6 +16,7 @@ import {
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvalDetail } from "@/hooks/useEvalDetail";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useSuggestionFrequency } from "@/hooks/useSuggestionFrequency";
 import { AgentTabs } from "@/components/eval-detail/AgentTabs";
 import { CriteriaCard } from "@/components/eval-detail/CriteriaCard";
 import { JsonTreeViewer } from "@/components/eval-detail/JsonTreeViewer";
@@ -31,6 +32,7 @@ export function EvalDetailPage() {
   }>();
   const { agents, systemGroups } = useAgentRegistry();
   const { data: evalRun, isLoading } = useEvalDetail(evalId, agents, systemGroup);
+  const { data: frequencyData } = useSuggestionFrequency(systemGroup ?? "", agents);
   const groupName = systemGroups.find((g) => g.group_key === systemGroup)?.display_name ?? "Evals";
 
   const [activeAgentKey, setActiveAgentKey] = useState<string | null>(null);
@@ -295,6 +297,7 @@ export function EvalDetailPage() {
                       agentDisplayName={activeAgent.display_name}
                       showWeightBar={showWeightBar}
                       totalWeight={totalWeight}
+                      suggestionFrequency={frequencyData?.frequencyMap.get(c.criterion)}
                       onHighlightInput={(path) => {
                         setLeftOpen(true);
                         setInputHighlight(path);
