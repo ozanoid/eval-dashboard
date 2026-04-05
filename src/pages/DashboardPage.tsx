@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
 import { RecentEvals } from "@/components/dashboard/RecentEvals";
 
 export function DashboardPage() {
+  const [activeSystem, setActiveSystem] = useState<string | null>(null);
+
   return (
     <div className="p-8 max-w-6xl space-y-8">
       <div>
@@ -14,8 +17,8 @@ export function DashboardPage() {
         </p>
       </div>
 
-      <StatsCards />
-      <DailyScoreChart />
+      <StatsCards activeSystem={activeSystem} onSystemSelect={setActiveSystem} />
+      <DailyScoreChart activeSystem={activeSystem} />
       <RecentEvals />
     </div>
   );
