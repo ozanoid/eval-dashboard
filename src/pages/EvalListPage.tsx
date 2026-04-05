@@ -11,6 +11,8 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useBrandScoreHistory } from "@/hooks/useBrandScoreHistory";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { InlineHeatmap } from "@/components/eval-list/InlineHeatmap";
+import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
+import { CommonSuggestions } from "@/components/dashboard/CommonSuggestions";
 
 function sortEvals(evals: EvalListItem[], sort: SortOption): EvalListItem[] {
   return [...evals].sort((a, b) => {
@@ -91,8 +93,8 @@ export function EvalListPage() {
   useKeyboardShortcuts(shortcuts);
 
   return (
-    <div className="p-8 max-w-7xl">
-      <div className="mb-6">
+    <div className="p-8 max-w-7xl space-y-6">
+      <div>
         <h1 className="text-2xl font-bold text-text-primary tracking-tight">
           {group?.display_name ?? "Evals"}
         </h1>
@@ -102,11 +104,16 @@ export function EvalListPage() {
       </div>
 
       {/* Inline Criteria Heatmap */}
-      <div className="mb-6">
-        <InlineHeatmap systemGroup={systemGroup ?? ""} agents={agents} />
-      </div>
+      <InlineHeatmap systemGroup={systemGroup ?? ""} agents={agents} />
 
-      <div className="mb-6">
+      {/* Daily Score Trends */}
+      <DailyScoreChart activeSystem={systemGroup ?? null} />
+
+      {/* Most Common Suggestions */}
+      <CommonSuggestions systemGroup={systemGroup ?? ""} />
+
+      {/* Filter + Eval List */}
+      <div>
         <FilterBar
           search={search}
           onSearchChange={setSearch}

@@ -2,6 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { AgentRegistryEntry, EvalReport, ImprovementSuggestion } from "@/lib/types";
 
+export interface SuggestionOccurrence {
+  evalId: string;
+  suggestion: ImprovementSuggestion;
+  agentKey: string;
+  agentDisplayName: string;
+}
+
 export interface SuggestionFrequencyItem {
   criterion: string;
   count: number;
@@ -10,6 +17,7 @@ export interface SuggestionFrequencyItem {
   agentKey: string;
   agentDisplayName: string;
   evalIds: string[];
+  occurrences: SuggestionOccurrence[];
 }
 
 /**
@@ -40,13 +48,7 @@ export function useSuggestionFrequency(
       const totalEvals = primaryRows?.length ?? 0;
 
       // For each agent, fetch all eval reports and extract suggestions
-      const criterionLatest = new Map<
-        string,
-        { suggestion: ImprovementSuggestion; agentKey: string; agentDisplayName: string }
-      >();
-
-      // Track which eval IDs have a suggestion for each criterion
-      const criterionEvalSets = new Map<string, Set<string>>();
+      const criterionOccurrences = new Map<string, SuggestionOccurrence[]>();
 
       for (const agent of groupAgents) {
         const { data: rows } = await supabase
@@ -65,31 +67,32 @@ export function useSuggestionFrequency(
 
           for (const suggestion of report.overall.improvement_suggestions) {
             const key = suggestion.affected_criterion;
-
-            const evalSet = criterionEvalSets.get(key) ?? new Set();
-            evalSet.add(evalId);
-            criterionEvalSets.set(key, evalSet);
-
-            criterionLatest.set(key, {
+            const list = criterionOccurrences.get(key) ?? [];
+            list.push({
+              evalId,
               suggestion,
               agentKey: agent.agent_key,
               agentDisplayName: agent.display_name,
             });
+            criterionOccurrences.set(key, list);
           }
         }
       }
 
       // Build frequency map (criterion → number of unique evals)
       const frequencyMap = new Map<string, number>();
-      for (const [key, evalSet] of criterionEvalSets) {
-        frequencyMap.set(key, evalSet.size);
+      for (const [key, occurrences] of criterionOccurrences) {
+        const uniqueEvals = new Set(occurrences.map((o) => o.evalId));
+        frequencyMap.set(key, uniqueEvals.size);
       }
 
       // Build top suggestions sorted by frequency
       const topSuggestions: SuggestionFrequencyItem[] = [];
       for (const [criterion, count] of frequencyMap) {
-        const latest = criterionLatest.get(criterion);
+        const occurrences = criterionOccurrences.get(criterion) ?? [];
+        const latest = occurrences[occurrences.length - 1];
         if (!latest) continue;
+        const uniqueEvalIds = Array.from(new Set(occurrences.map((o) => o.evalId)));
         topSuggestions.push({
           criterion,
           count,
@@ -97,7 +100,8 @@ export function useSuggestionFrequency(
           latestSuggestion: latest.suggestion,
           agentKey: latest.agentKey,
           agentDisplayName: latest.agentDisplayName,
-          evalIds: Array.from(criterionEvalSets.get(criterion) ?? []),
+          evalIds: uniqueEvalIds,
+          occurrences,
         });
       }
       topSuggestions.sort((a, b) => b.count - a.count);
