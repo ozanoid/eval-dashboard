@@ -10,9 +10,12 @@ import {
   ThumbsUp,
   AlertTriangle,
   CheckCircle,
+  ArrowUpDown,
+  Weight,
 } from "lucide-react";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvalDetail } from "@/hooks/useEvalDetail";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { AgentTabs } from "@/components/eval-detail/AgentTabs";
 import { CriteriaCard } from "@/components/eval-detail/CriteriaCard";
 import { JsonTreeViewer } from "@/components/eval-detail/JsonTreeViewer";
@@ -35,6 +38,30 @@ export function EvalDetailPage() {
   const [rightOpen, setRightOpen] = useState(true);
   const [inputHighlight, setInputHighlight] = useState<string | undefined>();
   const [outputHighlight, setOutputHighlight] = useState<string | undefined>();
+  const [sortByWeight, setSortByWeight] = useState(false);
+  const [showWeightBar, setShowWeightBar] = useState(false);
+
+  // Keyboard shortcuts for agent tab switching
+  const detailShortcuts = useMemo(
+    () => [
+      {
+        key: "Tab",
+        handler: () => {
+          if (!evalRun) return;
+          const keys = evalRun.agents.map((a) => a.agent_key);
+          const currentKey = activeAgentKey ?? keys[0];
+          const currentIdx = keys.indexOf(currentKey);
+          const nextIdx = (currentIdx + 1) % keys.length;
+          setActiveAgentKey(keys[nextIdx]);
+        },
+        description: "Next agent tab",
+        group: "Eval Detail",
+      },
+    ],
+    [evalRun, activeAgentKey]
+  );
+
+  useKeyboardShortcuts(detailShortcuts);
 
   const activeAgent: AgentEvalData | undefined = useMemo(() => {
     if (!evalRun) return undefined;
@@ -221,31 +248,64 @@ export function EvalDetailPage() {
 
             {/* Criteria Breakdown */}
             <div>
-              <h3 className="text-lg font-semibold text-text-primary mb-4">
-                Criteria Breakdown
-                <span className="ml-2 text-xs font-mono text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
-                  {activeAgent.eval_report.criteria_scores.length}
-                </span>
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-text-primary">
+                  Criteria Breakdown
+                  <span className="ml-2 text-xs font-mono text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
+                    {activeAgent.eval_report.criteria_scores.length}
+                  </span>
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowWeightBar(!showWeightBar)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      showWeightBar
+                        ? "bg-accent-purple/15 text-accent-purple"
+                        : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
+                    }`}
+                  >
+                    <Weight className="w-3.5 h-3.5" />
+                    Weights
+                  </button>
+                  <button
+                    onClick={() => setSortByWeight(!sortByWeight)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      sortByWeight
+                        ? "bg-accent-primary/15 text-accent-primary"
+                        : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
+                    }`}
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    By Weight
+                  </button>
+                </div>
+              </div>
               <div className="space-y-3">
-                {activeAgent.eval_report.criteria_scores.map((c) => (
-                  <CriteriaCard
-                    key={c.criterion}
-                    criteria={c}
-                    suggestion={suggestionMap.get(c.criterion)}
-                    evalId={evalRun.id}
-                    agentKey={activeAgent.agent_key}
-                    agentDisplayName={activeAgent.display_name}
-                    onHighlightInput={(path) => {
-                      setLeftOpen(true);
-                      setInputHighlight(path);
-                    }}
-                    onHighlightOutput={(path) => {
-                      setRightOpen(true);
-                      setOutputHighlight(path);
-                    }}
-                  />
-                ))}
+                {(() => {
+                  const criteria = [...activeAgent.eval_report.criteria_scores];
+                  if (sortByWeight) criteria.sort((a, b) => b.weight - a.weight);
+                  const totalWeight = criteria.reduce((s, c) => s + c.weight, 0);
+                  return criteria.map((c) => (
+                    <CriteriaCard
+                      key={c.criterion}
+                      criteria={c}
+                      suggestion={suggestionMap.get(c.criterion)}
+                      evalId={evalRun.id}
+                      agentKey={activeAgent.agent_key}
+                      agentDisplayName={activeAgent.display_name}
+                      showWeightBar={showWeightBar}
+                      totalWeight={totalWeight}
+                      onHighlightInput={(path) => {
+                        setLeftOpen(true);
+                        setInputHighlight(path);
+                      }}
+                      onHighlightOutput={(path) => {
+                        setRightOpen(true);
+                        setOutputHighlight(path);
+                      }}
+                    />
+                  ));
+                })()}
               </div>
             </div>
           </div>

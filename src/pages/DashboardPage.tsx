@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
+import { GradeDistributionChart } from "@/components/dashboard/GradeDistributionChart";
 import { RecentEvals } from "@/components/dashboard/RecentEvals";
 
 export function DashboardPage() {
@@ -19,6 +20,7 @@ export function DashboardPage() {
 
       <StatsCards activeSystem={activeSystem} onSystemSelect={setActiveSystem} />
       <DailyScoreChart activeSystem={activeSystem} />
+      <GradeDistributionChart activeSystem={activeSystem} />
       <RecentEvals />
     </div>
   );

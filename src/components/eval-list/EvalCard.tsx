@@ -1,20 +1,35 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { GradeBadge } from "@/components/shared/GradeBadge";
-import { formatDate, formatScore, gradeFromScore } from "@/lib/utils";
+import { formatDate, formatScore, gradeFromScore, cn } from "@/lib/utils";
 import type { EvalListItem } from "@/hooks/useEvals";
 
 interface EvalCardProps {
   eval: EvalListItem;
   systemGroup: string;
+  isFocused?: boolean;
 }
 
-export function EvalCard({ eval: ev, systemGroup }: EvalCardProps) {
+export function EvalCard({ eval: ev, systemGroup, isFocused }: EvalCardProps) {
   const overallGrade = gradeFromScore(ev.overall_avg);
+  const ref = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (isFocused && ref.current) {
+      ref.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [isFocused]);
 
   return (
     <Link
+      ref={ref}
       to={`/evals/${systemGroup}/${ev.id}`}
-      className="group block bg-bg-card border border-border-subtle rounded-xl p-5 hover-lift"
+      className={cn(
+        "group block bg-bg-card border rounded-xl p-5 hover-lift",
+        isFocused
+          ? "border-accent-primary/50 ring-1 ring-accent-primary/20"
+          : "border-border-subtle"
+      )}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-1">
