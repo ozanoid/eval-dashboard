@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, ShoppingCart, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, ShoppingCart, Check, CheckCircle, Download } from "lucide-react";
 import type { CriteriaScore, ImprovementSuggestion } from "@/lib/types";
 import { getCriterionScoreColor, getFidelityConfig } from "@/lib/constants";
 import { useCartStore } from "@/stores/cartStore";
-import { generateSuggestionHash, formatScore } from "@/lib/utils";
+import { generateSuggestionHash, formatScore, downloadFile } from "@/lib/utils";
 import { DiffView } from "@/components/shared/DiffView";
 
 interface CriteriaCardProps {
@@ -14,6 +14,7 @@ interface CriteriaCardProps {
   agentDisplayName: string;
   showWeightBar?: boolean;
   totalWeight?: number;
+  suggestionFrequency?: number;
   onHighlightInput?: (path: string) => void;
   onHighlightOutput?: (path: string) => void;
 }
@@ -26,10 +27,12 @@ export function CriteriaCard({
   agentDisplayName,
   showWeightBar,
   totalWeight,
+  suggestionFrequency,
   onHighlightInput,
   onHighlightOutput,
 }: CriteriaCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [directApplying, setDirectApplying] = useState(false);
   const scoreColor = getCriterionScoreColor(criteria.score);
   const fidelityConfig = getFidelityConfig(
     criteria.input_output_mapping?.fidelity ?? "medium"
@@ -189,6 +192,29 @@ export function CriteriaCard({
             </div>
           )}
 
+          {/* Export JSON button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                const exportData = {
+                  eval_id: evalId,
+                  agent_key: agentKey,
+                  agent_display_name: agentDisplayName,
+                  criteria: {
+                    ...criteria,
+                    ...(suggestion ? { suggestion } : {}),
+                  },
+                };
+                const json = JSON.stringify(exportData, null, 2);
+                downloadFile(json, `criteria-${criteria.criterion}-${evalId.slice(0, 8)}.json`);
+              }}
+              className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated transition-colors font-medium"
+            >
+              <Download className="w-3 h-3" />
+              Export JSON
+            </button>
+          </div>
+
           {/* Suggestion */}
           {suggestion && (
             <div
@@ -219,30 +245,53 @@ export function CriteriaCard({
                   <span className="text-xs font-mono text-text-tertiary">
                     {suggestion.expected_score_impact}
                   </span>
-                </div>
-                <button
-                  onClick={() => {
-                    if (!inCart && !applied) {
-                      addItem(evalId, agentKey, agentDisplayName, suggestion);
-                    }
-                  }}
-                  disabled={inCart || applied}
-                  className={`flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg font-semibold transition-all ${
-                    applied
-                      ? "bg-grade-a/12 text-grade-a cursor-default"
-                      : inCart
-                      ? "bg-accent-primary/12 text-accent-primary cursor-default"
-                      : "bg-accent-primary text-white hover:bg-accent-primary/90 shadow-sm"
-                  }`}
-                >
-                  {applied ? (
-                    <><Check className="w-3.5 h-3.5" /> Applied</>
-                  ) : inCart ? (
-                    <><Check className="w-3.5 h-3.5" /> In Cart</>
-                  ) : (
-                    <><ShoppingCart className="w-3.5 h-3.5" /> Add to Cart</>
+                  {suggestionFrequency !== undefined && suggestionFrequency > 1 && (
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-accent-primary/10 text-accent-primary">
+                      ×{suggestionFrequency}
+                    </span>
                   )}
-                </button>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {!applied && !inCart && (
+                    <button
+                      onClick={() => {
+                        if (!directApplying) {
+                          setDirectApplying(true);
+                          const { markApplied } = useCartStore.getState();
+                          markApplied([suggestionHash!]);
+                          setDirectApplying(false);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg font-medium text-text-secondary hover:text-grade-a hover:bg-grade-a/8 border border-border-subtle transition-all"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Applied
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (!inCart && !applied) {
+                        addItem(evalId, agentKey, agentDisplayName, suggestion);
+                      }
+                    }}
+                    disabled={inCart || applied}
+                    className={`flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg font-semibold transition-all ${
+                      applied
+                        ? "bg-grade-a/12 text-grade-a cursor-default"
+                        : inCart
+                        ? "bg-accent-primary/12 text-accent-primary cursor-default"
+                        : "bg-accent-primary text-white hover:bg-accent-primary/90 shadow-sm"
+                    }`}
+                  >
+                    {applied ? (
+                      <><Check className="w-3.5 h-3.5" /> Applied</>
+                    ) : inCart ? (
+                      <><Check className="w-3.5 h-3.5" /> In Cart</>
+                    ) : (
+                      <><ShoppingCart className="w-3.5 h-3.5" /> Add to Cart</>
+                    )}
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-text-secondary leading-relaxed">
                 {suggestion.suggestion}

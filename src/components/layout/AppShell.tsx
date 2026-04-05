@@ -3,9 +3,13 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { ShortcutHelpModal } from "@/components/shared/ShortcutHelpModal";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useAgentRegistry } from "@/hooks/useAgentRegistry";
+import { useNewEvalNotifications } from "@/hooks/useNewEvalNotifications";
 
 export function AppShell() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const { agents } = useAgentRegistry();
+  useNewEvalNotifications(agents);
 
   const shortcuts = useMemo(
     () => [

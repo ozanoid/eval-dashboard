@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { GradeBadge } from "@/components/shared/GradeBadge";
+import { Sparkline } from "@/components/shared/Sparkline";
 import { formatDate, formatScore, gradeFromScore, cn } from "@/lib/utils";
 import type { EvalListItem } from "@/hooks/useEvals";
 
@@ -8,9 +9,10 @@ interface EvalCardProps {
   eval: EvalListItem;
   systemGroup: string;
   isFocused?: boolean;
+  scoreHistory?: number[];
 }
 
-export function EvalCard({ eval: ev, systemGroup, isFocused }: EvalCardProps) {
+export function EvalCard({ eval: ev, systemGroup, isFocused, scoreHistory }: EvalCardProps) {
   const overallGrade = gradeFromScore(ev.overall_avg);
   const ref = useRef<HTMLAnchorElement>(null);
 
@@ -71,7 +73,12 @@ export function EvalCard({ eval: ev, systemGroup, isFocused }: EvalCardProps) {
         <span>
           Overall: <span className="font-mono font-bold text-text-primary">{formatScore(ev.overall_avg)}</span>
         </span>
-        <GradeBadge grade={overallGrade} size="sm" />
+        <div className="flex items-center gap-2">
+          {scoreHistory && scoreHistory.length >= 2 && (
+            <Sparkline data={scoreHistory} width={64} height={22} />
+          )}
+          <GradeBadge grade={overallGrade} size="sm" />
+        </div>
       </div>
     </Link>
   );

@@ -8,6 +8,9 @@ import { EvalGrid } from "@/components/eval-list/EvalGrid";
 import { FilterBar, type SortOption } from "@/components/eval-list/FilterBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useBrandScoreHistory } from "@/hooks/useBrandScoreHistory";
+import { useNotificationStore } from "@/stores/notificationStore";
+import { InlineHeatmap } from "@/components/eval-list/InlineHeatmap";
 
 function sortEvals(evals: EvalListItem[], sort: SortOption): EvalListItem[] {
   return [...evals].sort((a, b) => {
@@ -28,6 +31,13 @@ export function EvalListPage() {
   const { agents, systemGroups } = useAgentRegistry();
   const group = systemGroups.find((g) => g.group_key === systemGroup);
   const { data: evals, isLoading } = useEvals(systemGroup ?? "", agents);
+  const { data: scoreHistoryMap } = useBrandScoreHistory(systemGroup ?? "", agents);
+  const markSeen = useNotificationStore((s) => s.markSeen);
+
+  // Mark evals as seen when visiting the list page
+  useState(() => {
+    if (systemGroup) markSeen(systemGroup);
+  });
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date_desc");
@@ -91,6 +101,11 @@ export function EvalListPage() {
         </p>
       </div>
 
+      {/* Inline Criteria Heatmap */}
+      <div className="mb-6">
+        <InlineHeatmap systemGroup={systemGroup ?? ""} agents={agents} />
+      </div>
+
       <div className="mb-6">
         <FilterBar
           search={search}
@@ -112,7 +127,7 @@ export function EvalListPage() {
           description={search ? "Try adjusting your search query." : "Eval runs for this system will appear here once data is available."}
         />
       ) : (
-        <EvalGrid evals={filtered} systemGroup={systemGroup ?? ""} focusedIndex={focusedIndex} />
+        <EvalGrid evals={filtered} systemGroup={systemGroup ?? ""} focusedIndex={focusedIndex} scoreHistoryMap={scoreHistoryMap} />
       )}
     </div>
   );

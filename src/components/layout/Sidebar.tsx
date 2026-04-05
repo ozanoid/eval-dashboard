@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { Activity, LayoutDashboard, ShoppingCart } from "lucide-react";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useCartStore } from "@/stores/cartStore";
+import { useNotificationStore } from "@/stores/notificationStore";
 import { cn } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
 
@@ -57,6 +58,7 @@ function NavItem({
 export function Sidebar() {
   const { systemGroups } = useAgentRegistry();
   const cartCount = useCartStore((s) => s.items.length);
+  const newCounts = useNotificationStore((s) => s.newCounts);
 
   return (
     <aside className="w-[240px] h-screen flex-shrink-0 bg-bg-sidebar border-r border-border-subtle flex flex-col">
@@ -82,19 +84,29 @@ export function Sidebar() {
         <p className="text-[10px] font-medium text-text-tertiary tracking-[0.08em] uppercase px-3 pt-6 pb-2">
           Systems
         </p>
-        {systemGroups.map((group) => (
-          <NavItem
-            key={group.group_key}
-            to={`/evals/${group.group_key}`}
-            icon={
-              <DynamicIcon
-                name={group.agents[0]?.icon ?? "activity"}
-                className="w-4 h-4"
-              />
-            }
-            label={group.display_name}
-          />
-        ))}
+        {systemGroups.map((group) => {
+          const newCount = newCounts[group.group_key] ?? 0;
+          return (
+            <NavItem
+              key={group.group_key}
+              to={`/evals/${group.group_key}`}
+              icon={
+                <DynamicIcon
+                  name={group.agents[0]?.icon ?? "activity"}
+                  className="w-4 h-4"
+                />
+              }
+              label={group.display_name}
+              badge={
+                newCount > 0 ? (
+                  <span className="min-w-[20px] h-[20px] rounded-full bg-accent-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    {newCount}
+                  </span>
+                ) : undefined
+              }
+            />
+          );
+        })}
 
         <p className="text-[10px] font-medium text-text-tertiary tracking-[0.08em] uppercase px-3 pt-6 pb-2">
           Tools
