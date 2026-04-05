@@ -13,6 +13,8 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { InlineHeatmap } from "@/components/eval-list/InlineHeatmap";
 import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
 import { CommonSuggestions } from "@/components/dashboard/CommonSuggestions";
+import { ExportMenu } from "@/components/shared/ExportMenu";
+import { exportCsv } from "@/lib/exporters";
 
 function sortEvals(evals: EvalListItem[], sort: SortOption): EvalListItem[] {
   return [...evals].sort((a, b) => {
@@ -44,6 +46,7 @@ export function EvalListPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date_desc");
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     if (!evals) return [];
@@ -94,13 +97,43 @@ export function EvalListPage() {
 
   return (
     <div className="p-8 max-w-7xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-          {group?.display_name ?? "Evals"}
-        </h1>
-        <p className="text-sm text-text-tertiary mt-1">
-          {evals?.length ?? 0} evaluations
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+            {group?.display_name ?? "Evals"}
+          </h1>
+          <p className="text-sm text-text-tertiary mt-1">
+            {evals?.length ?? 0} evaluations
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedIds.size === 2 && (
+            <button
+              onClick={() => {
+                const ids = Array.from(selectedIds);
+                navigate(`/compare/${systemGroup}?left=${ids[0]}&right=${ids[1]}`);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-accent-primary rounded-lg hover:bg-accent-primary/90 transition-colors shadow-sm"
+            >
+              Compare ({selectedIds.size})
+            </button>
+          )}
+          {selectedIds.size > 0 && selectedIds.size < 2 && (
+            <span className="text-xs text-text-muted px-3 py-2">
+              Select 1 more to compare
+            </span>
+          )}
+          {evals && evals.length > 0 && (
+            <ExportMenu
+              options={[
+                {
+                  label: "Export CSV",
+                  onClick: () => exportCsv(evals, systemGroup ?? ""),
+                },
+              ]}
+            />
+          )}
+        </div>
       </div>
 
       {/* Inline Criteria Heatmap */}
@@ -134,7 +167,29 @@ export function EvalListPage() {
           description={search ? "Try adjusting your search query." : "Eval runs for this system will appear here once data is available."}
         />
       ) : (
-        <EvalGrid evals={filtered} systemGroup={systemGroup ?? ""} focusedIndex={focusedIndex} scoreHistoryMap={scoreHistoryMap} />
+        <EvalGrid
+          evals={filtered}
+          systemGroup={systemGroup ?? ""}
+          focusedIndex={focusedIndex}
+          scoreHistoryMap={scoreHistoryMap}
+          selectedIds={selectedIds}
+          onToggleSelect={(id) => {
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) {
+                next.delete(id);
+              } else if (next.size < 2) {
+                next.add(id);
+              } else {
+                // Replace oldest
+                const first = next.values().next().value!;
+                next.delete(first);
+                next.add(id);
+              }
+              return next;
+            });
+          }}
+        />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { EvalListPage } from "@/pages/EvalListPage";
 import { EvalDetailPage } from "@/pages/EvalDetailPage";
 import { CartPage } from "@/pages/CartPage";
+import { ComparisonPage } from "@/pages/ComparisonPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,7 @@ export default function App() {
               element={<EvalDetailPage />}
             />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/compare/:systemGroup" element={<ComparisonPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
