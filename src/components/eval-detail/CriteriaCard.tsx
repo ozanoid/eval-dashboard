@@ -3,7 +3,8 @@ import { ChevronDown, ChevronRight, ShoppingCart, Check } from "lucide-react";
 import type { CriteriaScore, ImprovementSuggestion } from "@/lib/types";
 import { getCriterionScoreColor, getFidelityConfig } from "@/lib/constants";
 import { useCartStore } from "@/stores/cartStore";
-import { generateSuggestionHash } from "@/lib/utils";
+import { generateSuggestionHash, formatScore } from "@/lib/utils";
+import { DiffView } from "@/components/shared/DiffView";
 
 interface CriteriaCardProps {
   criteria: CriteriaScore;
@@ -11,6 +12,8 @@ interface CriteriaCardProps {
   evalId: string;
   agentKey: string;
   agentDisplayName: string;
+  showWeightBar?: boolean;
+  totalWeight?: number;
   onHighlightInput?: (path: string) => void;
   onHighlightOutput?: (path: string) => void;
 }
@@ -21,6 +24,8 @@ export function CriteriaCard({
   evalId,
   agentKey,
   agentDisplayName,
+  showWeightBar,
+  totalWeight,
   onHighlightInput,
   onHighlightOutput,
 }: CriteriaCardProps) {
@@ -77,7 +82,35 @@ export function CriteriaCard({
         >
           {criteria.score}/10
         </span>
+
+        {/* Contribution pts */}
+        {showWeightBar && (
+          <span className="text-[10px] font-mono text-text-muted tabular-nums min-w-[48px] text-right flex-shrink-0">
+            {formatScore(criteria.weighted_score)} pts
+          </span>
+        )}
       </button>
+
+      {/* Weight contribution bar */}
+      {showWeightBar && totalWeight !== undefined && totalWeight > 0 && (
+        <div className="px-5 pb-2 flex items-center gap-2">
+          <div
+            className="flex-1 rounded-full overflow-hidden"
+            style={{ height: 4, backgroundColor: "var(--color-bg-page)" }}
+          >
+            <div
+              className="h-full rounded-full animate-progress-fill"
+              style={{
+                width: `${(criteria.weight / totalWeight) * 100}%`,
+                backgroundColor: "var(--color-accent-purple)",
+              }}
+            />
+          </div>
+          <span className="text-[10px] font-mono text-text-muted tabular-nums">
+            {((criteria.weight / totalWeight) * 100).toFixed(0)}%
+          </span>
+        </div>
+      )}
 
       {/* Expanded content */}
       {expanded && (
@@ -214,6 +247,21 @@ export function CriteriaCard({
               <p className="text-sm text-text-secondary leading-relaxed">
                 {suggestion.suggestion}
               </p>
+
+              {/* Diff view for modify_rule actions */}
+              {suggestion.prompt_patch.action === "modify_rule" &&
+                suggestion.prompt_patch.current_behavior &&
+                suggestion.prompt_patch.rule && (
+                  <div className="mt-3">
+                    <span className="text-[10px] font-medium text-text-tertiary uppercase tracking-[0.05em] mb-1.5 block">
+                      Rule Diff
+                    </span>
+                    <DiffView
+                      oldText={suggestion.prompt_patch.current_behavior}
+                      newText={suggestion.prompt_patch.rule}
+                    />
+                  </div>
+                )}
             </div>
           )}
         </div>

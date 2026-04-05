@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvals } from "@/hooks/useEvals";
@@ -7,6 +7,7 @@ import type { EvalListItem } from "@/hooks/useEvals";
 import { EvalGrid } from "@/components/eval-list/EvalGrid";
 import { FilterBar, type SortOption } from "@/components/eval-list/FilterBar";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 function sortEvals(evals: EvalListItem[], sort: SortOption): EvalListItem[] {
   return [...evals].sort((a, b) => {
@@ -23,12 +24,14 @@ function sortEvals(evals: EvalListItem[], sort: SortOption): EvalListItem[] {
 
 export function EvalListPage() {
   const { systemGroup } = useParams<{ systemGroup: string }>();
+  const navigate = useNavigate();
   const { agents, systemGroups } = useAgentRegistry();
   const group = systemGroups.find((g) => g.group_key === systemGroup);
   const { data: evals, isLoading } = useEvals(systemGroup ?? "", agents);
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date_desc");
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
   const filtered = useMemo(() => {
     if (!evals) return [];
@@ -41,6 +44,41 @@ export function EvalListPage() {
     }
     return sortEvals(result, sort);
   }, [evals, search, sort]);
+
+  const shortcuts = useMemo(
+    () => [
+      {
+        key: "j",
+        handler: () =>
+          setFocusedIndex((prev) =>
+            Math.min(prev + 1, filtered.length - 1)
+          ),
+        description: "Next eval card",
+        group: "Navigation",
+      },
+      {
+        key: "k",
+        handler: () =>
+          setFocusedIndex((prev) => Math.max(prev - 1, 0)),
+        description: "Previous eval card",
+        group: "Navigation",
+      },
+      {
+        key: "Enter",
+        handler: () => {
+          if (focusedIndex >= 0 && focusedIndex < filtered.length) {
+            navigate(`/evals/${systemGroup}/${filtered[focusedIndex].id}`);
+          }
+        },
+        when: () => focusedIndex >= 0,
+        description: "Open selected eval",
+        group: "Navigation",
+      },
+    ],
+    [filtered, focusedIndex, navigate, systemGroup]
+  );
+
+  useKeyboardShortcuts(shortcuts);
 
   return (
     <div className="p-8 max-w-7xl">
@@ -74,7 +112,7 @@ export function EvalListPage() {
           description={search ? "Try adjusting your search query." : "Eval runs for this system will appear here once data is available."}
         />
       ) : (
-        <EvalGrid evals={filtered} systemGroup={systemGroup ?? ""} />
+        <EvalGrid evals={filtered} systemGroup={systemGroup ?? ""} focusedIndex={focusedIndex} />
       )}
     </div>
   );
