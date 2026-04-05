@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -23,6 +23,8 @@ import { JsonTreeViewer } from "@/components/eval-detail/JsonTreeViewer";
 import { GradeBadge } from "@/components/shared/GradeBadge";
 import { ScoreBar } from "@/components/shared/ScoreBar";
 import { formatDate, formatScore } from "@/lib/utils";
+import { ExportMenu } from "@/components/shared/ExportMenu";
+import { exportPdf } from "@/lib/exporters";
 import type { AgentEvalData, ImprovementSuggestion } from "@/lib/types";
 
 export function EvalDetailPage() {
@@ -42,6 +44,7 @@ export function EvalDetailPage() {
   const [outputHighlight, setOutputHighlight] = useState<string | undefined>();
   const [sortByWeight, setSortByWeight] = useState(false);
   const [showWeightBar, setShowWeightBar] = useState(false);
+  const centerPanelRef = useRef<HTMLDivElement>(null);
 
   // Keyboard shortcuts for agent tab switching
   const detailShortcuts = useMemo(
@@ -145,6 +148,21 @@ export function EvalDetailPage() {
               <CheckCircle className="w-3.5 h-3.5" />
               Mark Reviewed
             </button>
+            <ExportMenu
+              options={[
+                {
+                  label: "Export PDF",
+                  onClick: async () => {
+                    if (centerPanelRef.current) {
+                      await exportPdf(
+                        centerPanelRef.current,
+                        `eval-${evalRun.brand_name ?? evalId}-${activeAgent.display_name}.pdf`
+                      );
+                    }
+                  },
+                },
+              ]}
+            />
           </div>
         </div>
       </div>
@@ -196,7 +214,7 @@ export function EvalDetailPage() {
             </button>
           </div>
 
-          <div className="p-8 space-y-8">
+          <div ref={centerPanelRef} className="p-8 space-y-8">
             {/* Score Overview */}
             <div>
               <div className="flex items-baseline gap-2 mb-2">
