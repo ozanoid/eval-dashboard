@@ -126,7 +126,7 @@ function SystemCard({
 
         {/* Mini trend chart */}
         {dailyScores && dailyScores.length >= 2 && (
-          <div className="w-[120px] h-[40px] flex-shrink-0">
+          <div className="w-[120px] h-[40px] flex-shrink-0" role="img" aria-label={`Score trend for ${group.display_name}`}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyScores}>
                 <YAxis domain={["dataMin - 5", "dataMax + 5"]} hide />

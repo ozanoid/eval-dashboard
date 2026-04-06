@@ -33,6 +33,8 @@ export function Sparkline({ data, width = 80, height = 28, className }: Sparklin
       width={width}
       height={height}
       className={className}
+      role="img"
+      aria-label={`Score trend: ${trending ? "up" : "down"} from ${data[0].toFixed(1)} to ${data[data.length - 1].toFixed(1)}`}
     >
       <polyline
         points={points}

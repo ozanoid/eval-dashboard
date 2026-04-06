@@ -195,6 +195,15 @@
 }
 
 /* ============================================
+   Z-index scale
+   z-10: sticky elements (headers, table columns)
+   z-20: mobile header bar
+   z-30: dropdowns, popovers
+   z-40: overlay backdrops
+   z-50: modals, sidebar overlay, skip link
+   ============================================ */
+
+/* ============================================
    Focus
    ============================================ */
 :focus-visible {
