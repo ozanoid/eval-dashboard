@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { EvalCardSkeleton } from "@/components/shared/Skeleton";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvals } from "@/hooks/useEvals";
 import type { EvalListItem } from "@/hooks/useEvals";
@@ -96,8 +96,8 @@ export function EvalListPage() {
   useKeyboardShortcuts(shortcuts);
 
   return (
-    <div className="p-8 max-w-7xl space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="p-4 sm:p-8 max-w-7xl space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">
             {group?.display_name ?? "Evals"}
@@ -158,8 +158,8 @@ export function EvalListPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => <EvalCardSkeleton key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState

@@ -31,8 +31,10 @@ export function FilterBar({
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <div className="relative flex-1 min-w-[220px] max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+        <label htmlFor="eval-search" className="sr-only">Search evaluations</label>
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" aria-hidden="true" />
         <input
+          id="eval-search"
           type="text"
           placeholder="Search by brand or keyword..."
           value={search}
@@ -42,8 +44,10 @@ export function FilterBar({
       </div>
 
       <div className="relative">
-        <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+        <label htmlFor="eval-sort" className="sr-only">Sort evaluations</label>
+        <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" aria-hidden="true" />
         <select
+          id="eval-sort"
           value={sort}
           onChange={(e) => onSortChange(e.target.value as SortOption)}
           className="appearance-none pl-8 pr-8 py-2 bg-bg-card border border-border-subtle rounded-lg text-sm text-text-secondary cursor-pointer focus:outline-none focus:border-accent-primary/50 transition-all"

@@ -51,6 +51,8 @@ export function CriteriaCard({
       {/* Header row */}
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-controls={`criteria-${criteria.criterion}`}
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-bg-card-hover transition-colors text-left"
       >
         {expanded ? (
@@ -117,8 +119,8 @@ export function CriteriaCard({
 
       {/* Expanded content */}
       {expanded && (
-        <div className="px-5 pb-5 pt-4 space-y-4 border-t border-border-subtle">
-          <p className="text-sm text-text-secondary leading-relaxed">
+        <div id={`criteria-${criteria.criterion}`} className="px-5 pb-5 pt-4 space-y-4 border-t border-border-subtle">
+          <p className="text-sm text-text-secondary leading-relaxed max-w-prose">
             {criteria.justification}
           </p>
 
@@ -170,12 +172,13 @@ export function CriteriaCard({
 
           {/* Evidence detail */}
           {(criteria.positive_evidence?.length > 0 || criteria.negative_evidence?.length > 0) && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {criteria.positive_evidence?.length > 0 && (
                 <ul className="space-y-2">
                   {criteria.positive_evidence.map((ev, i) => (
-                    <li key={i} className="text-xs text-text-secondary leading-relaxed pl-3 border-l-2 border-grade-a/25">
-                      {ev}
+                    <li key={i} className="text-xs text-text-secondary leading-relaxed pl-3 border-l-2 border-grade-a/25 flex gap-1.5">
+                      <span className="text-grade-a flex-shrink-0" aria-hidden="true">+</span>
+                      <span>{ev}</span>
                     </li>
                   ))}
                 </ul>
@@ -183,8 +186,9 @@ export function CriteriaCard({
               {criteria.negative_evidence?.length > 0 && (
                 <ul className="space-y-2">
                   {criteria.negative_evidence.map((ev, i) => (
-                    <li key={i} className="text-xs text-text-secondary leading-relaxed pl-3 border-l-2 border-grade-d/25">
-                      {ev}
+                    <li key={i} className="text-xs text-text-secondary leading-relaxed pl-3 border-l-2 border-grade-d/25 flex gap-1.5">
+                      <span className="text-grade-d flex-shrink-0" aria-hidden="true">−</span>
+                      <span>{ev}</span>
                     </li>
                   ))}
                 </ul>
@@ -293,7 +297,7 @@ export function CriteriaCard({
                   </button>
                 </div>
               </div>
-              <p className="text-sm text-text-secondary leading-relaxed">
+              <p className="text-sm text-text-secondary leading-relaxed max-w-prose">
                 {suggestion.suggestion}
               </p>
 

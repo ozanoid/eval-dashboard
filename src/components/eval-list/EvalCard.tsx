@@ -41,6 +41,8 @@ export function EvalCard({
             e.stopPropagation();
             onToggleSelect();
           }}
+          aria-label={`Select ${ev.brand_name ?? "eval"} for comparison`}
+          aria-pressed={isSelected}
           className={cn(
             "absolute top-3 left-3 z-10 w-5 h-5 rounded border flex items-center justify-center transition-all",
             isSelected

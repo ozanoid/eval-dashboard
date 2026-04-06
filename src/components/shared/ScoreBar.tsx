@@ -24,6 +24,11 @@ export function ScoreBar({
   return (
     <div className={cn("flex items-center gap-2.5 w-full", className)}>
       <div
+        role="progressbar"
+        aria-valuenow={Math.round(score)}
+        aria-valuemin={0}
+        aria-valuemax={maxScore}
+        aria-label={`Score: ${score.toFixed(1)} out of ${maxScore}`}
         className="flex-1 rounded-full overflow-hidden"
         style={{ height, backgroundColor: "var(--color-bg-page)" }}
       >
