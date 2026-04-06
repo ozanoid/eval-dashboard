@@ -5,6 +5,7 @@ import { useEvals } from "@/hooks/useEvals";
 import { supabase } from "@/lib/supabase";
 import { GradeBadge } from "@/components/shared/GradeBadge";
 import { formatScore, gradeFromScore } from "@/lib/utils";
+import { StatsCardSkeleton } from "@/components/shared/Skeleton";
 import type { AgentRegistryEntry, SystemGroup, DailyScore } from "@/lib/types";
 import {
   LineChart,
@@ -14,7 +15,15 @@ import {
 } from "recharts";
 
 export function StatsCards() {
-  const { agents, systemGroups } = useAgentRegistry();
+  const { agents, systemGroups, isLoading } = useAgentRegistry();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {[1, 2].map((i) => <StatsCardSkeleton key={i} />)}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 stagger-children">

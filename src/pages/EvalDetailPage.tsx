@@ -2,7 +2,6 @@ import { useState, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
-  Loader2,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -25,6 +24,7 @@ import { ScoreBar } from "@/components/shared/ScoreBar";
 import { formatDate, formatScore } from "@/lib/utils";
 import { ExportMenu } from "@/components/shared/ExportMenu";
 import { exportPdf } from "@/lib/exporters";
+import { CriteriaCardSkeleton } from "@/components/shared/Skeleton";
 import type { AgentEvalData, ImprovementSuggestion } from "@/lib/types";
 
 export function EvalDetailPage() {
@@ -85,8 +85,15 @@ export function EvalDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
+      <div className="p-4 sm:p-8 space-y-6">
+        <div className="animate-pulse space-y-3">
+          <div className="h-6 w-48 bg-bg-elevated rounded" />
+          <div className="h-4 w-32 bg-bg-elevated rounded" />
+        </div>
+        <div className="h-10 w-full bg-bg-elevated rounded-lg animate-pulse" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => <CriteriaCardSkeleton key={i} />)}
+        </div>
       </div>
     );
   }
@@ -107,7 +114,7 @@ export function EvalDetailPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="px-8 pt-5 pb-4 border-b border-border-default bg-bg-sidebar flex-shrink-0">
+      <div className="px-4 sm:px-8 pt-5 pb-4 border-b border-border-default bg-bg-sidebar flex-shrink-0">
         <Link
           to={`/evals/${systemGroup}`}
           className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-3"
@@ -116,9 +123,9 @@ export function EvalDetailPage() {
           Back to {groupName}
         </Link>
 
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
               {evalRun.brand_name ?? "Unknown Brand"}
             </h1>
             <div className="flex items-center gap-2 mt-1 text-sm">
@@ -132,18 +139,20 @@ export function EvalDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {evalRun.agents.map((a) => (
-              <div
-                key={a.agent_key}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-bg-elevated border border-border-subtle"
-              >
-                <span className="text-[11px] text-text-tertiary font-medium">
-                  {a.display_name.split(" ")[0]}
-                </span>
-                <GradeBadge grade={a.eval_report.overall.grade} size="sm" />
-              </div>
-            ))}
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            <div className="hidden sm:flex items-center gap-2">
+              {evalRun.agents.map((a) => (
+                <div
+                  key={a.agent_key}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-bg-elevated border border-border-subtle"
+                >
+                  <span className="text-[11px] text-text-tertiary font-medium">
+                    {a.display_name.split(" ")[0]}
+                  </span>
+                  <GradeBadge grade={a.eval_report.overall.grade} size="sm" />
+                </div>
+              ))}
+            </div>
             <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-success/15 text-accent-success text-xs font-semibold hover:bg-accent-success/25 transition-colors">
               <CheckCircle className="w-3.5 h-3.5" />
               Mark Reviewed
@@ -168,7 +177,7 @@ export function EvalDetailPage() {
       </div>
 
       {/* Agent Tabs */}
-      <div className="px-8 bg-bg-sidebar flex-shrink-0">
+      <div className="px-4 sm:px-8 bg-bg-sidebar flex-shrink-0">
         <AgentTabs
           agents={evalRun.agents}
           activeKey={activeAgentKey ?? evalRun.agents[0]?.agent_key ?? ""}
@@ -182,9 +191,9 @@ export function EvalDetailPage() {
 
       {/* 3-Panel Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel — INPUT */}
+        {/* Left Panel — INPUT (hidden on mobile) */}
         {leftOpen && (
-          <div className="w-[280px] border-r border-border-default bg-bg-card flex-shrink-0 flex flex-col overflow-hidden">
+          <div className="hidden md:flex w-[280px] border-r border-border-default bg-bg-card flex-shrink-0 flex-col overflow-hidden">
             <JsonTreeViewer
               data={activeAgent.input_data}
               highlightPath={inputHighlight}
@@ -200,7 +209,7 @@ export function EvalDetailPage() {
             <button
               onClick={() => setLeftOpen(!leftOpen)}
               aria-label={leftOpen ? "Close input panel" : "Open input panel"}
-              className="p-1.5 rounded-lg hover:bg-bg-card text-text-muted hover:text-text-primary transition-colors"
+              className="p-2.5 rounded-lg hover:bg-bg-card text-text-muted hover:text-text-primary transition-colors"
             >
               {leftOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
             </button>
@@ -210,13 +219,13 @@ export function EvalDetailPage() {
             <button
               onClick={() => setRightOpen(!rightOpen)}
               aria-label={rightOpen ? "Close output panel" : "Open output panel"}
-              className="p-1.5 rounded-lg hover:bg-bg-card text-text-muted hover:text-text-primary transition-colors"
+              className="p-2.5 rounded-lg hover:bg-bg-card text-text-muted hover:text-text-primary transition-colors"
             >
               {rightOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
 
-          <div ref={centerPanelRef} className="p-8 space-y-8">
+          <div ref={centerPanelRef} className="p-4 sm:p-8 space-y-6 sm:space-y-8">
             {/* Score Overview */}
             <div>
               <div className="flex items-baseline gap-2 mb-2">
@@ -233,7 +242,7 @@ export function EvalDetailPage() {
             </div>
 
             {/* Strengths & Weaknesses */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-bg-elevated rounded-xl p-5 border-t-2 border-grade-a">
                 <div className="flex items-center gap-2 mb-3">
                   <ThumbsUp className="w-4 h-4 text-grade-a" />
@@ -334,9 +343,9 @@ export function EvalDetailPage() {
           </div>
         </div>
 
-        {/* Right Panel — OUTPUT */}
+        {/* Right Panel — OUTPUT (hidden on mobile) */}
         {rightOpen && (
-          <div className="w-[300px] border-l border-border-default bg-bg-card flex-shrink-0 flex flex-col overflow-hidden">
+          <div className="hidden md:flex w-[300px] border-l border-border-default bg-bg-card flex-shrink-0 flex-col overflow-hidden">
             <JsonTreeViewer
               data={activeAgent.output_data as Record<string, unknown> | string | null}
               highlightPath={outputHighlight}
