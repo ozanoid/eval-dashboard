@@ -75,7 +75,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto px-3">
+      <nav aria-label="Main navigation" className="flex flex-col gap-0.5 flex-1 overflow-y-auto px-3">
         <p className="text-[10px] font-medium text-text-tertiary tracking-[0.08em] uppercase px-3 pt-4 pb-2">
           Overview
         </p>

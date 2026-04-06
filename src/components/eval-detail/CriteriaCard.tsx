@@ -51,6 +51,8 @@ export function CriteriaCard({
       {/* Header row */}
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-controls={`criteria-${criteria.criterion}`}
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-bg-card-hover transition-colors text-left"
       >
         {expanded ? (
@@ -117,7 +119,7 @@ export function CriteriaCard({
 
       {/* Expanded content */}
       {expanded && (
-        <div className="px-5 pb-5 pt-4 space-y-4 border-t border-border-subtle">
+        <div id={`criteria-${criteria.criterion}`} className="px-5 pb-5 pt-4 space-y-4 border-t border-border-subtle">
           <p className="text-sm text-text-secondary leading-relaxed">
             {criteria.justification}
           </p>

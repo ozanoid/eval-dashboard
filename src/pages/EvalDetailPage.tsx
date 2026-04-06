@@ -199,6 +199,7 @@ export function EvalDetailPage() {
           <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-border-default backdrop-blur-sm bg-bg-page/80 sticky top-0 z-10">
             <button
               onClick={() => setLeftOpen(!leftOpen)}
+              aria-label={leftOpen ? "Close input panel" : "Open input panel"}
               className="p-1.5 rounded-lg hover:bg-bg-card text-text-muted hover:text-text-primary transition-colors"
             >
               {leftOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
@@ -208,6 +209,7 @@ export function EvalDetailPage() {
             </span>
             <button
               onClick={() => setRightOpen(!rightOpen)}
+              aria-label={rightOpen ? "Close output panel" : "Open output panel"}
               className="p-1.5 rounded-lg hover:bg-bg-card text-text-muted hover:text-text-primary transition-colors"
             >
               {rightOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}

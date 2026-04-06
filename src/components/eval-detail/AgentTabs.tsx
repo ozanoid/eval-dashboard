@@ -10,12 +10,15 @@ interface AgentTabsProps {
 
 export function AgentTabs({ agents, activeKey, onSelect }: AgentTabsProps) {
   return (
-    <div className="flex gap-0 border-b border-border-default overflow-x-auto">
+    <div role="tablist" aria-label="Agent tabs" className="flex gap-0 border-b border-border-default overflow-x-auto">
       {agents.map((agent) => {
         const isActive = agent.agent_key === activeKey;
         return (
           <button
             key={agent.agent_key}
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`tabpanel-${agent.agent_key}`}
             onClick={() => onSelect(agent.agent_key)}
             className={cn(
               "relative flex items-center gap-2 px-5 py-3.5 text-sm font-medium whitespace-nowrap transition-colors",
