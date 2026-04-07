@@ -1,13 +1,13 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
-import { ArrowLeft, ArrowLeftRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvalDetail } from "@/hooks/useEvalDetail";
 import { GradeBadge } from "@/components/shared/GradeBadge";
 import { ScoreBar } from "@/components/shared/ScoreBar";
 import { formatDate, formatScore } from "@/lib/utils";
-import type { AgentEvalData, NormalizedEvalRun } from "@/lib/types";
-import { getCriterionScoreColor } from "@/lib/constants";
+import type { AgentEvalData, CriteriaScore, NormalizedEvalRun } from "@/lib/types";
+import { getCriterionScoreColor, getFidelityConfig } from "@/lib/constants";
 
 export function ComparisonPage() {
   const { systemGroup } = useParams<{ systemGroup: string }>();
@@ -186,6 +186,20 @@ function ComparisonPanel({
   otherAgent: AgentEvalData | undefined;
   label: string;
 }) {
+  const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(new Set());
+
+  function toggleCriterion(criterion: string) {
+    setExpandedCriteria((prev) => {
+      const next = new Set(prev);
+      if (next.has(criterion)) {
+        next.delete(criterion);
+      } else {
+        next.add(criterion);
+      }
+      return next;
+    });
+  }
+
   if (!eval_ || !agent) {
     return (
       <div className="p-8 text-center text-sm text-text-muted">
@@ -236,41 +250,90 @@ function ComparisonPanel({
           Criteria ({agent.eval_report.criteria_scores.length})
         </h3>
         <div className="space-y-2">
-          {agent.eval_report.criteria_scores.map((c: { criterion: string; label: string; score: number }) => {
+          {agent.eval_report.criteria_scores.map((c: CriteriaScore) => {
             const otherScore = otherAgent?.eval_report?.criteria_scores?.find(
-              (oc: { criterion: string }) => oc.criterion === c.criterion
+              (oc: CriteriaScore) => oc.criterion === c.criterion
             );
             const delta = otherScore ? c.score - otherScore.score : null;
+            const isExpanded = expandedCriteria.has(c.criterion);
 
             return (
               <div
                 key={c.criterion}
-                className="flex items-center gap-3 py-2 px-3 rounded-lg bg-bg-elevated"
+                className="rounded-lg bg-bg-elevated overflow-hidden"
               >
-                <span className="text-xs text-text-secondary flex-1 min-w-0 truncate">
-                  {c.label}
-                </span>
-                <div
-                  className="w-16 rounded-full overflow-hidden flex-shrink-0"
-                  style={{ height: 4, backgroundColor: "var(--color-bg-page)" }}
+                <button
+                  onClick={() => toggleCriterion(c.criterion)}
+                  className="w-full flex items-center gap-3 py-2 px-3 hover:bg-bg-card-hover transition-colors text-left"
                 >
+                  {isExpanded ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
+                  )}
+                  <span className="text-xs text-text-secondary flex-1 min-w-0 truncate">
+                    {c.label}
+                  </span>
                   <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${(c.score / 10) * 100}%`,
-                      backgroundColor: getCriterionScoreColor(c.score),
-                    }}
-                  />
-                </div>
-                <span
-                  className="text-sm font-mono font-bold tabular-nums min-w-[36px] text-right"
-                  style={{ color: getCriterionScoreColor(c.score) }}
-                >
-                  {c.score}
-                </span>
-                {delta !== null && delta !== 0 && (
-                  <div className="min-w-[44px] text-right">
-                    <ScoreDelta value={delta} small />
+                    className="w-16 rounded-full overflow-hidden flex-shrink-0"
+                    style={{ height: 4, backgroundColor: "var(--color-bg-page)" }}
+                  >
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${(c.score / 10) * 100}%`,
+                        backgroundColor: getCriterionScoreColor(c.score),
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="text-sm font-mono font-bold tabular-nums min-w-[36px] text-right"
+                    style={{ color: getCriterionScoreColor(c.score) }}
+                  >
+                    {c.score}
+                  </span>
+                  {delta !== null && delta !== 0 && (
+                    <div className="min-w-[44px] text-right">
+                      <ScoreDelta value={delta} small />
+                    </div>
+                  )}
+                </button>
+
+                {isExpanded && (
+                  <div className="px-3 pb-3 pt-2 space-y-3 border-t border-border-subtle">
+                    {/* Justification */}
+                    <p className="text-xs text-text-secondary leading-relaxed">
+                      {c.justification}
+                    </p>
+
+                    {/* Fidelity */}
+                    {c.input_output_mapping?.fidelity && (
+                      <span
+                        className="inline-block text-[10px] px-2 py-0.5 rounded-lg font-medium"
+                        style={{
+                          color: getFidelityConfig(c.input_output_mapping.fidelity).color,
+                          backgroundColor: getFidelityConfig(c.input_output_mapping.fidelity).bg,
+                        }}
+                      >
+                        {c.input_output_mapping.fidelity} fidelity
+                      </span>
+                    )}
+
+                    {/* Evidence */}
+                    {(c.positive_evidence?.length > 0 || c.negative_evidence?.length > 0) && (
+                      <div className="space-y-2">
+                        {c.positive_evidence?.map((ev, i) => (
+                          <p key={`p${i}`} className="text-xs text-text-secondary leading-relaxed pl-3 border-l-2 border-grade-a/25">
+                            {ev}
+                          </p>
+                        ))}
+                        {c.negative_evidence?.map((ev, i) => (
+                          <p key={`n${i}`} className="text-xs text-text-secondary leading-relaxed pl-3 border-l-2 border-grade-d/25">
+                            {ev}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
