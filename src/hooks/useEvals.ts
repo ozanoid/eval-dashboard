@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AgentRegistryEntry, EvalReport } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
+import type { PromptVersion } from "./usePromptVersions";
+import { resolveVersion } from "./usePromptVersions";
 
 export interface EvalListItem {
   id: string;
   created_at: string;
   brand_name: string | null;
   keyword: string | null;
+  version: string;
   agents: Array<{
     agent_key: string;
     display_name: string;
@@ -17,9 +20,9 @@ export interface EvalListItem {
   overall_avg: number;
 }
 
-export function useEvals(systemGroup: string, agents: AgentRegistryEntry[]) {
+export function useEvals(systemGroup: string, agents: AgentRegistryEntry[], promptVersions?: PromptVersion[]) {
   return useQuery({
-    queryKey: ["evals", systemGroup],
+    queryKey: ["evals", systemGroup, promptVersions?.length ?? 0],
     queryFn: async () => {
       const groupAgents = agents.filter((a) => a.system_group === systemGroup);
       if (groupAgents.length === 0) return [];
@@ -99,6 +102,7 @@ export function useEvals(systemGroup: string, agents: AgentRegistryEntry[]) {
           created_at: row.created_at,
           brand_name: brandName,
           keyword,
+          version: resolveVersion(row.created_at, promptVersions ?? []),
           agents: validAgents,
           overall_avg: Math.round(overallAvg * 10) / 10,
         });

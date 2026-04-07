@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, X } from "lucide-react";
 import { EvalCardSkeleton } from "@/components/shared/Skeleton";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvals } from "@/hooks/useEvals";
 import type { EvalListItem } from "@/hooks/useEvals";
+import { usePromptVersions } from "@/hooks/usePromptVersions";
 import { EvalGrid } from "@/components/eval-list/EvalGrid";
-import { FilterBar, type SortOption, type ReviewedFilter } from "@/components/eval-list/FilterBar";
+import { FilterBar, type SortOption, type ReviewedFilter, type GroupByOption } from "@/components/eval-list/FilterBar";
 import { useReviewedStore } from "@/stores/reviewedStore";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-// useBrandScoreHistory removed — sparkline data derived from useEvals overall_avg
 import { useNotificationStore } from "@/stores/notificationStore";
 import { InlineHeatmap } from "@/components/eval-list/InlineHeatmap";
 import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
@@ -36,7 +36,8 @@ export function EvalListPage() {
   const navigate = useNavigate();
   const { agents, systemGroups } = useAgentRegistry();
   const group = systemGroups.find((g) => g.group_key === systemGroup);
-  const { data: evals, isLoading } = useEvals(systemGroup ?? "", agents);
+  const { versions, addVersion } = usePromptVersions(systemGroup ?? "");
+  const { data: evals, isLoading } = useEvals(systemGroup ?? "", agents, versions);
   // Derive sparkline from overall_avg (same value shown on cards)
   const scoreHistoryMap = useMemo(() => {
     if (!evals) return undefined;
@@ -67,11 +68,17 @@ export function EvalListPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date_desc");
   const [reviewedFilter, setReviewedFilter] = useState<ReviewedFilter>("unreviewed");
-  const [groupByBrand, setGroupByBrand] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupByOption>("none");
   const [evalPage, setEvalPage] = useState(0);
   const EVALS_PER_PAGE = 10;
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Version creation form
+  const [showVersionForm, setShowVersionForm] = useState(false);
+  const [versionLabel, setVersionLabel] = useState("");
+  const [versionDesc, setVersionDesc] = useState("");
+  const [versionSaving, setVersionSaving] = useState(false);
 
   const reviewedCount = useMemo(() => {
     if (!evals) return 0;
@@ -104,22 +111,27 @@ export function EvalListPage() {
 
   const totalPages = Math.ceil(filtered.length / EVALS_PER_PAGE);
   const paged = useMemo(() => {
-    if (groupByBrand) return filtered; // no pagination in grouped mode
+    if (groupBy !== "none") return filtered; // no pagination in grouped mode
     return filtered.slice(evalPage * EVALS_PER_PAGE, evalPage * EVALS_PER_PAGE + EVALS_PER_PAGE);
-  }, [filtered, evalPage, groupByBrand]);
+  }, [filtered, evalPage, groupBy]);
 
-  // Brand groups for grouped view
-  const brandGroups = useMemo(() => {
-    if (!groupByBrand) return null;
-    const groups = new Map<string, EvalListItem[]>();
+  // Generic grouping
+  const groups = useMemo(() => {
+    if (groupBy === "none") return null;
+    const map = new Map<string, EvalListItem[]>();
     for (const ev of filtered) {
-      const brand = ev.brand_name ?? "Unknown";
-      const list = groups.get(brand) ?? [];
+      let key: string;
+      switch (groupBy) {
+        case "brand": key = ev.brand_name ?? "Unknown"; break;
+        case "keyword": key = ev.keyword ?? "No keyword"; break;
+        case "version": key = ev.version ?? "unversioned"; break;
+      }
+      const list = map.get(key) ?? [];
       list.push(ev);
-      groups.set(brand, list);
+      map.set(key, list);
     }
-    return groups;
-  }, [filtered, groupByBrand]);
+    return map;
+  }, [filtered, groupBy]);
 
   const shortcuts = useMemo(
     () => [
@@ -172,6 +184,26 @@ export function EvalListPage() {
     });
   }
 
+  async function handleCreateVersion() {
+    if (!versionLabel.trim() || !systemGroup) return;
+    // Check duplicate
+    if (versions.some((v) => v.version_label === versionLabel.trim())) return;
+    setVersionSaving(true);
+    try {
+      await addVersion({
+        system_group: systemGroup,
+        version_label: versionLabel.trim(),
+        starts_from_date: new Date().toISOString(),
+        description: versionDesc.trim() || undefined,
+      });
+      setVersionLabel("");
+      setVersionDesc("");
+      setShowVersionForm(false);
+    } finally {
+      setVersionSaving(false);
+    }
+  }
+
   return (
     <div className="p-4 sm:p-8 max-w-7xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -181,9 +213,27 @@ export function EvalListPage() {
           </h1>
           <p className="text-sm text-text-tertiary mt-1">
             {evals?.length ?? 0} evaluations
+            {versions.length > 0 && (
+              <span className="ml-2 text-accent-primary">
+                {versions[0].version_label}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* New Version button */}
+          <button
+            onClick={() => setShowVersionForm(!showVersionForm)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+              showVersionForm
+                ? "bg-accent-primary/15 text-accent-primary"
+                : "text-text-secondary hover:text-text-primary border border-border-subtle hover:border-border-default"
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            New Version
+          </button>
+
           {selectedIds.size === 2 && (
             <button
               onClick={() => {
@@ -213,6 +263,45 @@ export function EvalListPage() {
         </div>
       </div>
 
+      {/* Version creation form */}
+      {showVersionForm && (
+        <div className="flex items-end gap-2 p-3 bg-bg-card border border-border-subtle rounded-xl">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Label</label>
+            <input
+              type="text"
+              value={versionLabel}
+              onChange={(e) => setVersionLabel(e.target.value)}
+              placeholder="v4"
+              className="w-24 px-2.5 py-1.5 bg-bg-elevated border border-border-subtle rounded-md text-xs text-text-primary font-mono focus:outline-none focus:border-accent-primary/50 transition-all"
+            />
+          </div>
+          <div className="flex flex-col gap-1 flex-1">
+            <label className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Description (optional)</label>
+            <input
+              type="text"
+              value={versionDesc}
+              onChange={(e) => setVersionDesc(e.target.value)}
+              placeholder="What changed in the prompt?"
+              className="px-2.5 py-1.5 bg-bg-elevated border border-border-subtle rounded-md text-xs text-text-primary focus:outline-none focus:border-accent-primary/50 transition-all"
+            />
+          </div>
+          <button
+            onClick={handleCreateVersion}
+            disabled={versionSaving || !versionLabel.trim() || versions.some((v) => v.version_label === versionLabel.trim())}
+            className="px-3 py-1.5 bg-accent-primary text-white text-xs font-semibold rounded-md hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {versionSaving ? "..." : "Create"}
+          </button>
+          <button
+            onClick={() => setShowVersionForm(false)}
+            className="p-1.5 text-text-muted hover:text-text-primary transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Inline Criteria Heatmap */}
       <InlineHeatmap systemGroup={systemGroup ?? ""} agents={agents} />
 
@@ -234,8 +323,8 @@ export function EvalListPage() {
           reviewedFilter={reviewedFilter}
           onReviewedFilterChange={setReviewedFilter}
           reviewedCount={reviewedCount}
-          groupByBrand={groupByBrand}
-          onGroupByBrandChange={setGroupByBrand}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
         />
       </div>
 
@@ -264,18 +353,18 @@ export function EvalListPage() {
               : "Eval runs for this system will appear here once data is available."
           }
         />
-      ) : groupByBrand && brandGroups ? (
+      ) : groupBy !== "none" && groups ? (
         <div className="space-y-8">
-          {Array.from(brandGroups.entries()).map(([brand, brandEvals]) => (
-            <div key={brand}>
+          {Array.from(groups.entries()).map(([key, groupEvals]) => (
+            <div key={key}>
               <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-sm font-semibold text-text-primary">{brand}</h3>
+                <h3 className="text-sm font-semibold text-text-primary">{key}</h3>
                 <span className="text-[10px] font-mono text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
-                  {brandEvals.length}
+                  {groupEvals.length}
                 </span>
               </div>
               <EvalGrid
-                evals={brandEvals}
+                evals={groupEvals}
                 systemGroup={systemGroup ?? ""}
                 focusedIndex={-1}
                 scoreHistoryMap={scoreHistoryMap}

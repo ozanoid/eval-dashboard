@@ -1,8 +1,8 @@
 import { Search, ArrowUpDown, LayoutGrid } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export type SortOption = "date_desc" | "date_asc" | "score_desc" | "score_asc" | "name_asc" | "name_desc";
 export type ReviewedFilter = "unreviewed" | "reviewed" | "all";
+export type GroupByOption = "none" | "brand" | "keyword" | "version";
 
 interface FilterBarProps {
   search: string;
@@ -14,8 +14,8 @@ interface FilterBarProps {
   reviewedFilter: ReviewedFilter;
   onReviewedFilterChange: (value: ReviewedFilter) => void;
   reviewedCount: number;
-  groupByBrand: boolean;
-  onGroupByBrandChange: (value: boolean) => void;
+  groupBy: GroupByOption;
+  onGroupByChange: (value: GroupByOption) => void;
 }
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
@@ -27,11 +27,20 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "name_desc", label: "Name Z-A" },
 ];
 
+const GROUP_OPTIONS: Array<{ value: GroupByOption; label: string }> = [
+  { value: "none", label: "No grouping" },
+  { value: "brand", label: "By Brand" },
+  { value: "keyword", label: "By Keyword" },
+  { value: "version", label: "By Version" },
+];
+
 const REVIEWED_FILTERS: Array<{ value: ReviewedFilter; label: string }> = [
   { value: "unreviewed", label: "Unreviewed" },
   { value: "reviewed", label: "Reviewed" },
   { value: "all", label: "All" },
 ];
+
+import { cn } from "@/lib/utils";
 
 export function FilterBar({
   search,
@@ -43,8 +52,8 @@ export function FilterBar({
   reviewedFilter,
   onReviewedFilterChange,
   reviewedCount,
-  groupByBrand,
-  onGroupByBrandChange,
+  groupBy,
+  onGroupByChange,
 }: FilterBarProps) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
@@ -99,18 +108,24 @@ export function FilterBar({
         </select>
       </div>
 
-      <button
-        onClick={() => onGroupByBrandChange(!groupByBrand)}
-        className={cn(
-          "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors",
-          groupByBrand
-            ? "bg-accent-primary/15 text-accent-primary"
-            : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
-        )}
-      >
-        <LayoutGrid className="w-3.5 h-3.5" />
-        Group
-      </button>
+      {/* Group by dropdown */}
+      <div className="relative">
+        <LayoutGrid className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" aria-hidden="true" />
+        <select
+          value={groupBy}
+          onChange={(e) => onGroupByChange(e.target.value as GroupByOption)}
+          className={cn(
+            "appearance-none pl-8 pr-8 py-2 border rounded-lg text-sm cursor-pointer focus:outline-none focus:border-accent-primary/50 transition-all",
+            groupBy !== "none"
+              ? "bg-accent-primary/10 border-accent-primary/30 text-accent-primary"
+              : "bg-bg-card border-border-subtle text-text-secondary"
+          )}
+        >
+          {GROUP_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
 
       <span className="text-xs text-text-muted ml-auto tabular-nums">
         {filteredCount === totalCount

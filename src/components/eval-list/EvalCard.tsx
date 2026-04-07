@@ -76,9 +76,16 @@ export function EvalCard({
           <h3 className="text-base font-semibold text-text-primary truncate group-hover:text-accent-primary transition-colors">
             {ev.brand_name ?? "Unknown Brand"}
           </h3>
-          <span className="text-xs text-text-muted flex-shrink-0 ml-3">
-            {formatDate(ev.created_at)}
-          </span>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+            {ev.version && ev.version !== "unversioned" && (
+              <span className="text-[10px] font-mono font-semibold bg-accent-primary/10 text-accent-primary px-1.5 py-0.5 rounded">
+                {ev.version}
+              </span>
+            )}
+            <span className="text-xs text-text-muted">
+              {formatDate(ev.created_at)}
+            </span>
+          </div>
         </div>
         {ev.keyword && (
           <p className="text-sm text-text-secondary mb-4 truncate">
