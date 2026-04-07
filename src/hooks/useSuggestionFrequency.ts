@@ -4,6 +4,8 @@ import type { AgentRegistryEntry, EvalReport, ImprovementSuggestion } from "@/li
 
 export interface SuggestionOccurrence {
   evalId: string;
+  brandName: string | null;
+  createdAt: string;
   suggestion: ImprovementSuggestion;
   agentKey: string;
   agentDisplayName: string;
@@ -50,6 +52,21 @@ export function useSuggestionFrequency(
       // For each agent, fetch all eval reports and extract suggestions
       const criterionOccurrences = new Map<string, SuggestionOccurrence[]>();
 
+      // Fetch brand_name from primary table for display
+      const brandMap = new Map<string, { brandName: string | null; createdAt: string }>();
+      const { data: brandRows } = await supabase
+        .from(primaryAgent.table_name)
+        .select("id, created_at, brand_name");
+      if (brandRows) {
+        for (const row of brandRows) {
+          const r = row as unknown as Record<string, unknown>;
+          brandMap.set(r.id as string, {
+            brandName: (r.brand_name as string) ?? null,
+            createdAt: r.created_at as string,
+          });
+        }
+      }
+
       for (const agent of groupAgents) {
         const { data: rows } = await supabase
           .from(agent.table_name)
@@ -64,12 +81,15 @@ export function useSuggestionFrequency(
 
           if (!report?.overall?.improvement_suggestions) continue;
           const evalId = (row as unknown as Record<string, unknown>).id as string;
+          const meta = brandMap.get(evalId);
 
           for (const suggestion of report.overall.improvement_suggestions) {
             const key = suggestion.affected_criterion;
             const list = criterionOccurrences.get(key) ?? [];
             list.push({
               evalId,
+              brandName: meta?.brandName ?? null,
+              createdAt: meta?.createdAt ?? "",
               suggestion,
               agentKey: agent.agent_key,
               agentDisplayName: agent.display_name,
