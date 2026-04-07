@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__22d0e358-037a-4838-a7ba-e62891e8eb5e__list_tables",
+      "mcp__22d0e358-037a-4838-a7ba-e62891e8eb5e__execute_sql",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/anthropics/claude-code/main/plugins/frontend-design/skills/frontend-design/SKILL.md\")"
+    ]
+  }
+}

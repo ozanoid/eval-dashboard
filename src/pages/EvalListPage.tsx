@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EvalCardSkeleton } from "@/components/shared/Skeleton";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvals } from "@/hooks/useEvals";
 import type { EvalListItem } from "@/hooks/useEvals";
 import { EvalGrid } from "@/components/eval-list/EvalGrid";
-import { FilterBar, type SortOption } from "@/components/eval-list/FilterBar";
+import { FilterBar, type SortOption, type ReviewedFilter } from "@/components/eval-list/FilterBar";
+import { useReviewedStore } from "@/stores/reviewedStore";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { useBrandScoreHistory } from "@/hooks/useBrandScoreHistory";
+// useBrandScoreHistory removed — sparkline data derived from useEvals overall_avg
 import { useNotificationStore } from "@/stores/notificationStore";
 import { InlineHeatmap } from "@/components/eval-list/InlineHeatmap";
 import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
@@ -35,7 +37,24 @@ export function EvalListPage() {
   const { agents, systemGroups } = useAgentRegistry();
   const group = systemGroups.find((g) => g.group_key === systemGroup);
   const { data: evals, isLoading } = useEvals(systemGroup ?? "", agents);
-  const { data: scoreHistoryMap } = useBrandScoreHistory(systemGroup ?? "", agents);
+  // Derive sparkline from overall_avg (same value shown on cards)
+  const scoreHistoryMap = useMemo(() => {
+    if (!evals) return undefined;
+    const sorted = [...evals].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const map = new Map<string, number[]>();
+    for (const ev of sorted) {
+      if (!ev.brand_name) continue;
+      const scores = map.get(ev.brand_name) ?? [];
+      scores.push(ev.overall_avg);
+      map.set(ev.brand_name, scores);
+    }
+    for (const [brand, scores] of map) {
+      if (scores.length > 5) map.set(brand, scores.slice(-5));
+    }
+    return map;
+  }, [evals]);
   const markSeen = useNotificationStore((s) => s.markSeen);
 
   // Mark evals as seen when visiting the list page
@@ -43,14 +62,33 @@ export function EvalListPage() {
     if (systemGroup) markSeen(systemGroup);
   });
 
+  const { reviewedIds, isReviewed } = useReviewedStore();
+
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date_desc");
+  const [reviewedFilter, setReviewedFilter] = useState<ReviewedFilter>("unreviewed");
+  const [groupByBrand, setGroupByBrand] = useState(false);
+  const [evalPage, setEvalPage] = useState(0);
+  const EVALS_PER_PAGE = 10;
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const reviewedCount = useMemo(() => {
+    if (!evals) return 0;
+    return evals.filter((ev) => isReviewed(ev.id)).length;
+  }, [evals, reviewedIds, isReviewed]);
 
   const filtered = useMemo(() => {
     if (!evals) return [];
     let result = evals;
+
+    // Apply reviewed filter
+    if (reviewedFilter === "unreviewed") {
+      result = result.filter((ev) => !isReviewed(ev.id));
+    } else if (reviewedFilter === "reviewed") {
+      result = result.filter((ev) => isReviewed(ev.id));
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -58,7 +96,30 @@ export function EvalListPage() {
       );
     }
     return sortEvals(result, sort);
-  }, [evals, search, sort]);
+  }, [evals, search, sort, reviewedFilter, reviewedIds, isReviewed]);
+
+  // Reset page when filters change
+  const filterKey = `${search}-${sort}-${reviewedFilter}-${reviewedIds.size}`;
+  useMemo(() => { setEvalPage(0); }, [filterKey]);
+
+  const totalPages = Math.ceil(filtered.length / EVALS_PER_PAGE);
+  const paged = useMemo(() => {
+    if (groupByBrand) return filtered; // no pagination in grouped mode
+    return filtered.slice(evalPage * EVALS_PER_PAGE, evalPage * EVALS_PER_PAGE + EVALS_PER_PAGE);
+  }, [filtered, evalPage, groupByBrand]);
+
+  // Brand groups for grouped view
+  const brandGroups = useMemo(() => {
+    if (!groupByBrand) return null;
+    const groups = new Map<string, EvalListItem[]>();
+    for (const ev of filtered) {
+      const brand = ev.brand_name ?? "Unknown";
+      const list = groups.get(brand) ?? [];
+      list.push(ev);
+      groups.set(brand, list);
+    }
+    return groups;
+  }, [filtered, groupByBrand]);
 
   const shortcuts = useMemo(
     () => [
@@ -94,6 +155,22 @@ export function EvalListPage() {
   );
 
   useKeyboardShortcuts(shortcuts);
+
+  function handleToggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < 2) {
+        next.add(id);
+      } else {
+        const first = next.values().next().value!;
+        next.delete(first);
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl space-y-6">
@@ -154,6 +231,11 @@ export function EvalListPage() {
           onSortChange={setSort}
           totalCount={evals?.length ?? 0}
           filteredCount={filtered.length}
+          reviewedFilter={reviewedFilter}
+          onReviewedFilterChange={setReviewedFilter}
+          reviewedCount={reviewedCount}
+          groupByBrand={groupByBrand}
+          onGroupByBrandChange={setGroupByBrand}
         />
       </div>
 
@@ -163,33 +245,80 @@ export function EvalListPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title={search ? "No matching evals" : "No evals yet"}
-          description={search ? "Try adjusting your search query." : "Eval runs for this system will appear here once data is available."}
+          title={
+            search
+              ? "No matching evals"
+              : reviewedFilter === "reviewed"
+              ? "No reviewed evals"
+              : reviewedFilter === "unreviewed" && reviewedCount > 0
+              ? "All evals reviewed"
+              : "No evals yet"
+          }
+          description={
+            search
+              ? "Try adjusting your search query."
+              : reviewedFilter === "reviewed"
+              ? "Mark evals as reviewed from the detail page."
+              : reviewedFilter === "unreviewed" && reviewedCount > 0
+              ? "Switch to 'Reviewed' or 'All' to see them."
+              : "Eval runs for this system will appear here once data is available."
+          }
         />
+      ) : groupByBrand && brandGroups ? (
+        <div className="space-y-8">
+          {Array.from(brandGroups.entries()).map(([brand, brandEvals]) => (
+            <div key={brand}>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-text-primary">{brand}</h3>
+                <span className="text-[10px] font-mono text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
+                  {brandEvals.length}
+                </span>
+              </div>
+              <EvalGrid
+                evals={brandEvals}
+                systemGroup={systemGroup ?? ""}
+                focusedIndex={-1}
+                scoreHistoryMap={scoreHistoryMap}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+              />
+            </div>
+          ))}
+        </div>
       ) : (
-        <EvalGrid
-          evals={filtered}
-          systemGroup={systemGroup ?? ""}
-          focusedIndex={focusedIndex}
-          scoreHistoryMap={scoreHistoryMap}
-          selectedIds={selectedIds}
-          onToggleSelect={(id) => {
-            setSelectedIds((prev) => {
-              const next = new Set(prev);
-              if (next.has(id)) {
-                next.delete(id);
-              } else if (next.size < 2) {
-                next.add(id);
-              } else {
-                // Replace oldest
-                const first = next.values().next().value!;
-                next.delete(first);
-                next.add(id);
-              }
-              return next;
-            });
-          }}
-        />
+        <>
+          <EvalGrid
+            evals={paged}
+            systemGroup={systemGroup ?? ""}
+            focusedIndex={focusedIndex}
+            scoreHistoryMap={scoreHistoryMap}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+          />
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <button
+                onClick={() => setEvalPage((p) => Math.max(0, p - 1))}
+                disabled={evalPage === 0}
+                className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors disabled:opacity-30 disabled:cursor-default"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs text-text-tertiary tabular-nums font-mono">
+                {evalPage + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() => setEvalPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={evalPage >= totalPages - 1}
+                className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors disabled:opacity-30 disabled:cursor-default"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
