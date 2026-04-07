@@ -17,12 +17,13 @@ import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvalDetail } from "@/hooks/useEvalDetail";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSuggestionFrequency } from "@/hooks/useSuggestionFrequency";
+import { useReviewedStore } from "@/stores/reviewedStore";
 import { AgentTabs } from "@/components/eval-detail/AgentTabs";
 import { CriteriaCard } from "@/components/eval-detail/CriteriaCard";
 import { JsonTreeViewer } from "@/components/eval-detail/JsonTreeViewer";
 import { GradeBadge } from "@/components/shared/GradeBadge";
 import { ScoreBar } from "@/components/shared/ScoreBar";
-import { formatDate, formatScore } from "@/lib/utils";
+import { formatDate, formatScore, cn } from "@/lib/utils";
 import { ExportMenu } from "@/components/shared/ExportMenu";
 import { exportPdf } from "@/lib/exporters";
 import type { AgentEvalData, ImprovementSuggestion } from "@/lib/types";
@@ -36,6 +37,9 @@ export function EvalDetailPage() {
   const { data: evalRun, isLoading } = useEvalDetail(evalId, agents, systemGroup);
   const { data: frequencyData } = useSuggestionFrequency(systemGroup ?? "", agents);
   const groupName = systemGroups.find((g) => g.group_key === systemGroup)?.display_name ?? "Evals";
+
+  const { isReviewed, toggleReviewed } = useReviewedStore();
+  const reviewed = isReviewed(evalId ?? "");
 
   const [activeAgentKey, setActiveAgentKey] = useState<string | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
@@ -144,9 +148,17 @@ export function EvalDetailPage() {
                 <GradeBadge grade={a.eval_report.overall.grade} size="sm" />
               </div>
             ))}
-            <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-success/15 text-accent-success text-xs font-semibold hover:bg-accent-success/25 transition-colors">
+            <button
+              onClick={() => evalId && toggleReviewed(evalId)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors",
+                reviewed
+                  ? "bg-accent-success text-white ring-1 ring-accent-success/50"
+                  : "bg-accent-success/15 text-accent-success hover:bg-accent-success/25"
+              )}
+            >
               <CheckCircle className="w-3.5 h-3.5" />
-              Mark Reviewed
+              {reviewed ? "Reviewed" : "Mark Reviewed"}
             </button>
             <ExportMenu
               options={[

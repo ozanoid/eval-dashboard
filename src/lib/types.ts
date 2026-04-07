@@ -110,6 +110,7 @@ export interface DailyScore {
 
 export interface ChartAnnotation {
   id: string;
+  system_group: string;
   date: string;
   annotation_text: string;
   annotation_type: "info" | "milestone" | "regression" | "deployment";

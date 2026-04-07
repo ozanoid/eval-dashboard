@@ -5,7 +5,8 @@ import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvals } from "@/hooks/useEvals";
 import type { EvalListItem } from "@/hooks/useEvals";
 import { EvalGrid } from "@/components/eval-list/EvalGrid";
-import { FilterBar, type SortOption } from "@/components/eval-list/FilterBar";
+import { FilterBar, type SortOption, type ReviewedFilter } from "@/components/eval-list/FilterBar";
+import { useReviewedStore } from "@/stores/reviewedStore";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useBrandScoreHistory } from "@/hooks/useBrandScoreHistory";
@@ -43,14 +44,30 @@ export function EvalListPage() {
     if (systemGroup) markSeen(systemGroup);
   });
 
+  const { reviewedIds, isReviewed } = useReviewedStore();
+
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date_desc");
+  const [reviewedFilter, setReviewedFilter] = useState<ReviewedFilter>("unreviewed");
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const reviewedCount = useMemo(() => {
+    if (!evals) return 0;
+    return evals.filter((ev) => isReviewed(ev.id)).length;
+  }, [evals, reviewedIds, isReviewed]);
 
   const filtered = useMemo(() => {
     if (!evals) return [];
     let result = evals;
+
+    // Apply reviewed filter
+    if (reviewedFilter === "unreviewed") {
+      result = result.filter((ev) => !isReviewed(ev.id));
+    } else if (reviewedFilter === "reviewed") {
+      result = result.filter((ev) => isReviewed(ev.id));
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -58,7 +75,7 @@ export function EvalListPage() {
       );
     }
     return sortEvals(result, sort);
-  }, [evals, search, sort]);
+  }, [evals, search, sort, reviewedFilter, reviewedIds, isReviewed]);
 
   const shortcuts = useMemo(
     () => [
@@ -154,6 +171,9 @@ export function EvalListPage() {
           onSortChange={setSort}
           totalCount={evals?.length ?? 0}
           filteredCount={filtered.length}
+          reviewedFilter={reviewedFilter}
+          onReviewedFilterChange={setReviewedFilter}
+          reviewedCount={reviewedCount}
         />
       </div>
 
@@ -163,8 +183,24 @@ export function EvalListPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title={search ? "No matching evals" : "No evals yet"}
-          description={search ? "Try adjusting your search query." : "Eval runs for this system will appear here once data is available."}
+          title={
+            search
+              ? "No matching evals"
+              : reviewedFilter === "reviewed"
+              ? "No reviewed evals"
+              : reviewedFilter === "unreviewed" && reviewedCount > 0
+              ? "All evals reviewed"
+              : "No evals yet"
+          }
+          description={
+            search
+              ? "Try adjusting your search query."
+              : reviewedFilter === "reviewed"
+              ? "Mark evals as reviewed from the detail page."
+              : reviewedFilter === "unreviewed" && reviewedCount > 0
+              ? "Switch to 'Reviewed' or 'All' to see them."
+              : "Eval runs for this system will appear here once data is available."
+          }
         />
       ) : (
         <EvalGrid

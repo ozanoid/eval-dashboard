@@ -1,6 +1,8 @@
 import { Search, ArrowUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type SortOption = "date_desc" | "date_asc" | "score_desc" | "score_asc" | "name_asc" | "name_desc";
+export type ReviewedFilter = "unreviewed" | "reviewed" | "all";
 
 interface FilterBarProps {
   search: string;
@@ -9,6 +11,9 @@ interface FilterBarProps {
   onSortChange: (value: SortOption) => void;
   totalCount: number;
   filteredCount: number;
+  reviewedFilter: ReviewedFilter;
+  onReviewedFilterChange: (value: ReviewedFilter) => void;
+  reviewedCount: number;
 }
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
@@ -20,6 +25,12 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
   { value: "name_desc", label: "Name Z-A" },
 ];
 
+const REVIEWED_FILTERS: Array<{ value: ReviewedFilter; label: string }> = [
+  { value: "unreviewed", label: "Unreviewed" },
+  { value: "reviewed", label: "Reviewed" },
+  { value: "all", label: "All" },
+];
+
 export function FilterBar({
   search,
   onSearchChange,
@@ -27,9 +38,35 @@ export function FilterBar({
   onSortChange,
   totalCount,
   filteredCount,
+  reviewedFilter,
+  onReviewedFilterChange,
+  reviewedCount,
 }: FilterBarProps) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
+      {/* Reviewed filter toggle */}
+      <div className="flex rounded-lg border border-border-subtle overflow-hidden">
+        {REVIEWED_FILTERS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onReviewedFilterChange(opt.value)}
+            className={cn(
+              "px-3 py-2 text-xs font-medium transition-colors relative",
+              reviewedFilter === opt.value
+                ? "bg-accent-primary/15 text-accent-primary"
+                : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
+            )}
+          >
+            {opt.label}
+            {opt.value === "reviewed" && reviewedCount > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent-success/20 text-accent-success">
+                {reviewedCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       <div className="relative flex-1 min-w-[220px] max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
         <input
