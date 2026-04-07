@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvals } from "@/hooks/useEvals";
 import type { EvalListItem } from "@/hooks/useEvals";
@@ -49,6 +49,9 @@ export function EvalListPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date_desc");
   const [reviewedFilter, setReviewedFilter] = useState<ReviewedFilter>("unreviewed");
+  const [groupByBrand, setGroupByBrand] = useState(false);
+  const [evalPage, setEvalPage] = useState(0);
+  const EVALS_PER_PAGE = 10;
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -76,6 +79,29 @@ export function EvalListPage() {
     }
     return sortEvals(result, sort);
   }, [evals, search, sort, reviewedFilter, reviewedIds, isReviewed]);
+
+  // Reset page when filters change
+  const filterKey = `${search}-${sort}-${reviewedFilter}-${reviewedIds.size}`;
+  useMemo(() => { setEvalPage(0); }, [filterKey]);
+
+  const totalPages = Math.ceil(filtered.length / EVALS_PER_PAGE);
+  const paged = useMemo(() => {
+    if (groupByBrand) return filtered; // no pagination in grouped mode
+    return filtered.slice(evalPage * EVALS_PER_PAGE, evalPage * EVALS_PER_PAGE + EVALS_PER_PAGE);
+  }, [filtered, evalPage, groupByBrand]);
+
+  // Brand groups for grouped view
+  const brandGroups = useMemo(() => {
+    if (!groupByBrand) return null;
+    const groups = new Map<string, EvalListItem[]>();
+    for (const ev of filtered) {
+      const brand = ev.brand_name ?? "Unknown";
+      const list = groups.get(brand) ?? [];
+      list.push(ev);
+      groups.set(brand, list);
+    }
+    return groups;
+  }, [filtered, groupByBrand]);
 
   const shortcuts = useMemo(
     () => [
@@ -111,6 +137,22 @@ export function EvalListPage() {
   );
 
   useKeyboardShortcuts(shortcuts);
+
+  function handleToggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < 2) {
+        next.add(id);
+      } else {
+        const first = next.values().next().value!;
+        next.delete(first);
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="p-8 max-w-7xl space-y-6">
@@ -174,6 +216,8 @@ export function EvalListPage() {
           reviewedFilter={reviewedFilter}
           onReviewedFilterChange={setReviewedFilter}
           reviewedCount={reviewedCount}
+          groupByBrand={groupByBrand}
+          onGroupByBrandChange={setGroupByBrand}
         />
       </div>
 
@@ -202,30 +246,61 @@ export function EvalListPage() {
               : "Eval runs for this system will appear here once data is available."
           }
         />
+      ) : groupByBrand && brandGroups ? (
+        <div className="space-y-8">
+          {Array.from(brandGroups.entries()).map(([brand, brandEvals]) => (
+            <div key={brand}>
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-text-primary">{brand}</h3>
+                <span className="text-[10px] font-mono text-text-muted bg-bg-elevated px-2 py-0.5 rounded">
+                  {brandEvals.length}
+                </span>
+              </div>
+              <EvalGrid
+                evals={brandEvals}
+                systemGroup={systemGroup ?? ""}
+                focusedIndex={-1}
+                scoreHistoryMap={scoreHistoryMap}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+              />
+            </div>
+          ))}
+        </div>
       ) : (
-        <EvalGrid
-          evals={filtered}
-          systemGroup={systemGroup ?? ""}
-          focusedIndex={focusedIndex}
-          scoreHistoryMap={scoreHistoryMap}
-          selectedIds={selectedIds}
-          onToggleSelect={(id) => {
-            setSelectedIds((prev) => {
-              const next = new Set(prev);
-              if (next.has(id)) {
-                next.delete(id);
-              } else if (next.size < 2) {
-                next.add(id);
-              } else {
-                // Replace oldest
-                const first = next.values().next().value!;
-                next.delete(first);
-                next.add(id);
-              }
-              return next;
-            });
-          }}
-        />
+        <>
+          <EvalGrid
+            evals={paged}
+            systemGroup={systemGroup ?? ""}
+            focusedIndex={focusedIndex}
+            scoreHistoryMap={scoreHistoryMap}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+          />
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <button
+                onClick={() => setEvalPage((p) => Math.max(0, p - 1))}
+                disabled={evalPage === 0}
+                className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors disabled:opacity-30 disabled:cursor-default"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs text-text-tertiary tabular-nums font-mono">
+                {evalPage + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() => setEvalPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={evalPage >= totalPages - 1}
+                className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors disabled:opacity-30 disabled:cursor-default"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

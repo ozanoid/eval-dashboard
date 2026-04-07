@@ -126,7 +126,7 @@ export function useSuggestionFrequency(
       }
       topSuggestions.sort((a, b) => b.count - a.count);
 
-      return { frequencyMap, topSuggestions: topSuggestions.slice(0, 5), totalEvals };
+      return { frequencyMap, topSuggestions: topSuggestions.slice(0, 10), totalEvals };
     },
     enabled: groupAgents.length > 0,
     staleTime: 5 * 60 * 1000,

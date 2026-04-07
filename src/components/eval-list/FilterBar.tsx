@@ -1,4 +1,4 @@
-import { Search, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUpDown, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type SortOption = "date_desc" | "date_asc" | "score_desc" | "score_asc" | "name_asc" | "name_desc";
@@ -14,6 +14,8 @@ interface FilterBarProps {
   reviewedFilter: ReviewedFilter;
   onReviewedFilterChange: (value: ReviewedFilter) => void;
   reviewedCount: number;
+  groupByBrand: boolean;
+  onGroupByBrandChange: (value: boolean) => void;
 }
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
@@ -41,6 +43,8 @@ export function FilterBar({
   reviewedFilter,
   onReviewedFilterChange,
   reviewedCount,
+  groupByBrand,
+  onGroupByBrandChange,
 }: FilterBarProps) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
@@ -90,6 +94,19 @@ export function FilterBar({
           ))}
         </select>
       </div>
+
+      <button
+        onClick={() => onGroupByBrandChange(!groupByBrand)}
+        className={cn(
+          "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors",
+          groupByBrand
+            ? "bg-accent-primary/15 text-accent-primary"
+            : "text-text-tertiary hover:text-text-secondary hover:bg-bg-elevated"
+        )}
+      >
+        <LayoutGrid className="w-3.5 h-3.5" />
+        Group
+      </button>
 
       <span className="text-xs text-text-muted ml-auto tabular-nums">
         {filteredCount === totalCount
