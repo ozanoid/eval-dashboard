@@ -346,6 +346,7 @@ export function DailyScoreChart({ activeSystem }: DailyScoreChartProps) {
       </div>
 
       {/* Chart */}
+      <div role="img" aria-label="Daily score trends line chart showing agent performance over time">
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -447,6 +448,7 @@ export function DailyScoreChart({ activeSystem }: DailyScoreChartProps) {
           })}
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

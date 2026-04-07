@@ -150,6 +150,9 @@
     padding: 0;
     box-sizing: border-box;
   }
+  button, [role="button"] {
+    cursor: pointer;
+  }
   body {
     background-color: var(--color-bg-page);
     color: var(--color-text-primary);
@@ -192,6 +195,15 @@
 }
 
 /* ============================================
+   Z-index scale
+   z-10: sticky elements (headers, table columns)
+   z-20: mobile header bar
+   z-30: dropdowns, popovers
+   z-40: overlay backdrops
+   z-50: modals, sidebar overlay, skip link
+   ============================================ */
+
+/* ============================================
    Focus
    ============================================ */
 :focus-visible {
@@ -212,6 +224,7 @@ select option {
    Hover lift for cards
    ============================================ */
 .hover-lift {
+  cursor: pointer;
   transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
 }
 .hover-lift:hover {
@@ -255,3 +268,17 @@ select option {
 .stagger-children > *:nth-child(6) { animation-delay: 250ms; }
 .stagger-children > *:nth-child(7) { animation-delay: 300ms; }
 .stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+
+/* ============================================
+   Reduced motion — respect user preference
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

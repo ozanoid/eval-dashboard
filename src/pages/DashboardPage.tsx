@@ -3,7 +3,7 @@ import { RecentEvals } from "@/components/dashboard/RecentEvals";
 
 export function DashboardPage() {
   return (
-    <div className="p-8 max-w-6xl space-y-8">
+    <div className="p-4 sm:p-8 max-w-6xl space-y-6 sm:space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-text-primary tracking-tight">
           Dashboard
