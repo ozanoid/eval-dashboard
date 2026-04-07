@@ -7,6 +7,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useNewEvalNotifications } from "@/hooks/useNewEvalNotifications";
 import { useCartStore } from "@/stores/cartStore";
+import { useReviewedStore } from "@/stores/reviewedStore";
 import { supabase } from "@/lib/supabase";
 
 export function AppShell() {
@@ -17,6 +18,7 @@ export function AppShell() {
 
   // Hydrate applied suggestions from DB on mount
   const loadAppliedFromDb = useCartStore((s) => s.loadAppliedFromDb);
+  const loadReviewedFromDb = useReviewedStore((s) => s.loadFromDb);
   useEffect(() => {
     supabase
       .from("suggestion_applications")
@@ -26,7 +28,15 @@ export function AppShell() {
           loadAppliedFromDb(data.map((r) => r.suggestion_hash));
         }
       });
-  }, [loadAppliedFromDb]);
+    supabase
+      .from("eval_reviewed")
+      .select("eval_id")
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          loadReviewedFromDb(data.map((r) => r.eval_id));
+        }
+      });
+  }, [loadAppliedFromDb, loadReviewedFromDb]);
 
   const shortcuts = useMemo(
     () => [
