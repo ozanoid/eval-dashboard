@@ -9,7 +9,7 @@ import { FilterBar, type SortOption, type ReviewedFilter } from "@/components/ev
 import { useReviewedStore } from "@/stores/reviewedStore";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { useBrandScoreHistory } from "@/hooks/useBrandScoreHistory";
+// useBrandScoreHistory removed — sparkline data derived from useEvals overall_avg
 import { useNotificationStore } from "@/stores/notificationStore";
 import { InlineHeatmap } from "@/components/eval-list/InlineHeatmap";
 import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
@@ -36,7 +36,24 @@ export function EvalListPage() {
   const { agents, systemGroups } = useAgentRegistry();
   const group = systemGroups.find((g) => g.group_key === systemGroup);
   const { data: evals, isLoading } = useEvals(systemGroup ?? "", agents);
-  const { data: scoreHistoryMap } = useBrandScoreHistory(systemGroup ?? "", agents);
+  // Derive sparkline from overall_avg (same value shown on cards)
+  const scoreHistoryMap = useMemo(() => {
+    if (!evals) return undefined;
+    const sorted = [...evals].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const map = new Map<string, number[]>();
+    for (const ev of sorted) {
+      if (!ev.brand_name) continue;
+      const scores = map.get(ev.brand_name) ?? [];
+      scores.push(ev.overall_avg);
+      map.set(ev.brand_name, scores);
+    }
+    for (const [brand, scores] of map) {
+      if (scores.length > 5) map.set(brand, scores.slice(-5));
+    }
+    return map;
+  }, [evals]);
   const markSeen = useNotificationStore((s) => s.markSeen);
 
   // Mark evals as seen when visiting the list page
