@@ -1,15 +1,30 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { ShortcutHelpModal } from "@/components/shared/ShortcutHelpModal";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useNewEvalNotifications } from "@/hooks/useNewEvalNotifications";
+import { useCartStore } from "@/stores/cartStore";
+import { supabase } from "@/lib/supabase";
 
 export function AppShell() {
   const [helpOpen, setHelpOpen] = useState(false);
   const { agents } = useAgentRegistry();
   useNewEvalNotifications(agents);
+
+  // Hydrate applied suggestions from DB on mount
+  const loadAppliedFromDb = useCartStore((s) => s.loadAppliedFromDb);
+  useEffect(() => {
+    supabase
+      .from("suggestion_applications")
+      .select("suggestion_hash")
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          loadAppliedFromDb(data.map((r) => r.suggestion_hash));
+        }
+      });
+  }, [loadAppliedFromDb]);
 
   const shortcuts = useMemo(
     () => [

@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useSuggestionFrequency";
 import { useCartStore } from "@/stores/cartStore";
 import { generateSuggestionHash, formatDate } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 function titleCase(snakeStr: string): string {
   return snakeStr
@@ -214,15 +215,19 @@ function SuggestionDetailModal({
   const navigate = useNavigate();
   const { markApplied } = useCartStore();
 
-  function handleApplyAll() {
-    const hashes = item.occurrences.map((occ) =>
-      generateSuggestionHash(
+  async function handleApplyAll() {
+    const rows = item.occurrences.map((occ) => ({
+      eval_id: occ.evalId,
+      agent_key: occ.agentKey,
+      suggestion_hash: generateSuggestionHash(
         occ.evalId,
         occ.suggestion.affected_criterion,
         occ.suggestion.prompt_patch.rule
-      )
-    );
-    markApplied(hashes);
+      ),
+      suggestion_data: occ.suggestion,
+    }));
+    await supabase.from("suggestion_applications").upsert(rows, { onConflict: "suggestion_hash" });
+    markApplied(rows.map((r) => r.suggestion_hash));
     onClose();
   }
 

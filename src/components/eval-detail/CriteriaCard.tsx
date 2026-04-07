@@ -4,6 +4,7 @@ import type { CriteriaScore, ImprovementSuggestion } from "@/lib/types";
 import { getCriterionScoreColor, getFidelityConfig } from "@/lib/constants";
 import { useCartStore } from "@/stores/cartStore";
 import { generateSuggestionHash, formatScore, downloadFile } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { DiffView } from "@/components/shared/DiffView";
 
 interface CriteriaCardProps {
@@ -254,9 +255,15 @@ export function CriteriaCard({
                 <div className="flex items-center gap-1.5">
                   {!applied && !inCart && (
                     <button
-                      onClick={() => {
-                        if (!directApplying) {
+                      onClick={async () => {
+                        if (!directApplying && suggestion) {
                           setDirectApplying(true);
+                          await supabase.from("suggestion_applications").insert({
+                            eval_id: evalId,
+                            agent_key: agentKey,
+                            suggestion_hash: suggestionHash!,
+                            suggestion_data: suggestion,
+                          });
                           const { markApplied } = useCartStore.getState();
                           markApplied([suggestionHash!]);
                           setDirectApplying(false);
