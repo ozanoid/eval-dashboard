@@ -5,7 +5,7 @@ import { EvalCardSkeleton } from "@/components/shared/Skeleton";
 import { useAgentRegistry } from "@/hooks/useAgentRegistry";
 import { useEvals } from "@/hooks/useEvals";
 import type { EvalListItem } from "@/hooks/useEvals";
-import { usePromptVersions } from "@/hooks/usePromptVersions";
+import { usePromptVersions, resolveVersion } from "@/hooks/usePromptVersions";
 import { EvalGrid } from "@/components/eval-list/EvalGrid";
 import { FilterBar, type SortOption, type ReviewedFilter, type GroupByOption } from "@/components/eval-list/FilterBar";
 import { useReviewedStore } from "@/stores/reviewedStore";
@@ -38,7 +38,17 @@ export function EvalListPage() {
   const { agents, systemGroups } = useAgentRegistry();
   const group = systemGroups.find((g) => g.group_key === systemGroup);
   const { versions, addVersion } = usePromptVersions(systemGroup ?? "");
-  const { data: evals, isLoading } = useEvals(systemGroup ?? "", agents, versions);
+  const { data: rawEvals, isLoading } = useEvals(systemGroup ?? "", agents);
+
+  // Resolve versions after both evals and versions have loaded
+  const evals = useMemo(() => {
+    if (!rawEvals) return undefined;
+    if (versions.length === 0) return rawEvals;
+    return rawEvals.map((ev) => ({
+      ...ev,
+      version: resolveVersion(ev.created_at, versions),
+    }));
+  }, [rawEvals, versions]);
   // Derive sparkline from overall_avg (same value shown on cards)
   const scoreHistoryMap = useMemo(() => {
     if (!evals) return undefined;
