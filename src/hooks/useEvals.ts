@@ -22,7 +22,7 @@ export interface EvalListItem {
 
 export function useEvals(systemGroup: string, agents: AgentRegistryEntry[], promptVersions?: PromptVersion[]) {
   return useQuery({
-    queryKey: ["evals", systemGroup, promptVersions?.length ?? 0],
+    queryKey: ["evals", systemGroup],
     queryFn: async () => {
       const groupAgents = agents.filter((a) => a.system_group === systemGroup);
       if (groupAgents.length === 0) return [];

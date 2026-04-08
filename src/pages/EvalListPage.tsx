@@ -16,6 +16,7 @@ import { InlineHeatmap } from "@/components/eval-list/InlineHeatmap";
 import { DailyScoreChart } from "@/components/dashboard/DailyScoreChart";
 import { CommonSuggestions } from "@/components/dashboard/CommonSuggestions";
 import { ExportMenu } from "@/components/shared/ExportMenu";
+import { VersionScorecard } from "@/components/dashboard/VersionScorecard";
 import { exportCsv } from "@/lib/exporters";
 
 function sortEvals(evals: EvalListItem[], sort: SortOption): EvalListItem[] {
@@ -307,6 +308,9 @@ export function EvalListPage() {
 
       {/* Daily Score Trends */}
       <DailyScoreChart activeSystem={systemGroup ?? null} />
+
+      {/* Version Performance */}
+      {evals && <VersionScorecard evals={evals} versions={versions} />}
 
       {/* Most Common Suggestions */}
       <CommonSuggestions systemGroup={systemGroup ?? ""} />
