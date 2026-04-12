@@ -13,7 +13,7 @@ import { supabase } from "./supabase";
 async function fetchAgentData(
   agent: AgentRegistryEntry,
   evalId: string
-): Promise<(AgentEvalData & { created_at: string }) | null> {
+): Promise<(AgentEvalData & { created_at: string; table_brand_name?: string }) | null> {
   const { data, error } = await supabase
     .from(agent.table_name)
     .select("*")
@@ -36,6 +36,7 @@ async function fetchAgentData(
     input_data: inputData as Record<string, unknown> | null,
     output_data: outputData,
     created_at: data.created_at as string,
+    table_brand_name: (data.brand_name as string) ?? undefined,
   };
 }
 
@@ -51,7 +52,7 @@ export async function fetchEvalRun(
   );
 
   const validResults = results.filter(
-    (r): r is AgentEvalData & { created_at: string } =>
+    (r): r is AgentEvalData & { created_at: string; table_brand_name?: string } =>
       r !== null && r.eval_report !== null
   );
 
@@ -69,14 +70,15 @@ export async function fetchEvalRun(
   for (const agent of validResults) {
     const meta = agent.eval_report.eval_metadata;
     if (meta.brand_name) brandName = meta.brand_name as string;
+    if (!brandName && agent.table_brand_name) brandName = agent.table_brand_name;
     if (meta.target_prompt) keyword = meta.target_prompt as string;
     if (meta.query) keyword = meta.query as string;
     if (meta.primary_keyword) keyword ??= meta.primary_keyword as string;
   }
 
-  // Strip created_at from agent data before returning
+  // Strip internal fields from agent data before returning
   const validAgents: AgentEvalData[] = validResults.map(
-    ({ created_at: _ca, ...rest }) => rest
+    ({ created_at: _ca, table_brand_name: _bn, ...rest }) => rest
   );
 
   return {
