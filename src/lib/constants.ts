@@ -53,4 +53,5 @@ export const AGENT_COLORS: Record<string, string> = {
   new_content_brief: "var(--color-agent-brief)",
   faq_generation: "var(--color-agent-faq-gen)",
   faq_quality: "var(--color-agent-faq-qual)",
+  new_citation_readiness: "var(--color-agent-citation-readiness)",
 };
