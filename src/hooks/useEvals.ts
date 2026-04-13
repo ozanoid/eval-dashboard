@@ -25,18 +25,12 @@ export function useEvals(systemGroup: string, agents: AgentRegistryEntry[]) {
       const groupAgents = agents.filter((a) => a.system_group === systemGroup);
       if (groupAgents.length === 0) return [];
 
-      // Find the content brief table for brand_name, or use first agent
-      const briefAgent = groupAgents.find((a) =>
-        a.table_name.includes("content_brief")
-      );
-      const primaryAgent = briefAgent ?? groupAgents[0];
-
       // Fetch ALL data from ALL agent tables in parallel (no N+1)
       const allAgentData = await Promise.all(
         groupAgents.map(async (agent) => {
           const { data } = await supabase
             .from(agent.table_name)
-            .select(`id, created_at, ${agent.eval_report_column}${agent === primaryAgent && agent.table_name.includes("content_brief") ? ", brand_name" : ""}`)
+            .select(`id, created_at, brand_name, ${agent.eval_report_column}`)
             .order("created_at", { ascending: false });
 
           if (!data) return { agent, rows: new Map<string, Record<string, unknown>>() };
@@ -55,22 +49,39 @@ export function useEvals(systemGroup: string, agents: AgentRegistryEntry[]) {
         agentDataMap.set(agent.agent_key, { agent, rows });
       }
 
-      // Get all eval IDs from primary agent (ordered by created_at DESC)
-      const primaryData = agentDataMap.get(primaryAgent.agent_key);
-      if (!primaryData) return [];
+      // Merge eval IDs from ALL agent tables (not just primary)
+      const idMap = new Map<string, { id: string; created_at: string; brand_name: string | null }>();
+      for (const { rows } of allAgentData) {
+        for (const [id, row] of rows) {
+          const existing = idMap.get(id);
+          const rowBrand = (row.brand_name as string) ?? null;
+          const rowCreatedAt = row.created_at as string;
+          if (!existing) {
+            idMap.set(id, { id, created_at: rowCreatedAt, brand_name: rowBrand });
+          } else {
+            if (rowCreatedAt < existing.created_at) existing.created_at = rowCreatedAt;
+            if (rowBrand && !existing.brand_name) existing.brand_name = rowBrand;
+          }
+        }
+      }
+
+      // Sort by created_at descending
+      const mergedRows = Array.from(idMap.values()).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
       const evalItems: EvalListItem[] = [];
 
-      for (const [evalId, primaryRow] of primaryData.rows) {
+      for (const row of mergedRows) {
         const agentScores = groupAgents
           .map((agent) => {
             const agentEntry = agentDataMap.get(agent.agent_key);
             if (!agentEntry) return null;
 
-            const row = agentEntry.rows.get(evalId);
-            if (!row) return null;
+            const agentRow = agentEntry.rows.get(row.id);
+            if (!agentRow) return null;
 
-            const report = row[agent.eval_report_column] as EvalReport | null;
+            const report = agentRow[agent.eval_report_column] as EvalReport | null;
             if (!report?.overall) return null;
 
             return {
@@ -88,23 +99,31 @@ export function useEvals(systemGroup: string, agents: AgentRegistryEntry[]) {
             ? agentScores.reduce((s, a) => s + a.weighted_total, 0) / agentScores.length
             : 0;
 
-        // Extract metadata
-        let brandName: string | null = (primaryRow.brand_name as string) ?? null;
+        // keyword from eval_metadata (use pre-fetched data, no extra queries)
         let keyword: string | null = null;
-        const createdAt = primaryRow.created_at as string;
+        for (const agent of groupAgents) {
+          if (keyword) break;
+          const agentEntry = agentDataMap.get(agent.agent_key);
+          const agentRow = agentEntry?.rows.get(row.id);
+          if (!agentRow) continue;
 
-        if (briefAgent) {
-          const report = primaryRow[briefAgent.eval_report_column] as EvalReport | null;
+          const report = agentRow[agent.eval_report_column] as EvalReport | null;
           if (report?.eval_metadata) {
             const meta = report.eval_metadata;
-            keyword = (meta.target_prompt as string) ?? (meta.primary_keyword as string) ?? null;
+            keyword =
+              (meta.target_prompt as string) ??
+              (meta.query as string) ??
+              (meta.primary_keyword as string) ??
+              (meta.page_url as string) ??
+              (meta.own_page_url as string) ??
+              null;
           }
         }
 
         evalItems.push({
-          id: evalId,
-          created_at: createdAt,
-          brand_name: brandName,
+          id: row.id,
+          created_at: row.created_at,
+          brand_name: row.brand_name,
           keyword,
           version: "", // resolved in EvalListPage via useMemo
           agents: agentScores,

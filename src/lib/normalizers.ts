@@ -62,18 +62,35 @@ export async function fetchEvalRun(
     validResults.reduce((sum, a) => sum + a.eval_report.overall.weighted_total, 0) /
     validResults.length;
 
-  // Extract brand_name and keyword from content brief or first available
+  // brand_name: from table column across all agent tables
   let brandName: string | null = null;
   let keyword: string | null = null;
   let createdAt = validResults[0].created_at;
 
+  // Fetch brand_name from table columns
+  for (const agent of agents) {
+    if (brandName) break;
+    const { data } = await supabase
+      .from(agent.table_name)
+      .select("brand_name")
+      .eq("id", evalId)
+      .single();
+    if (data && (data as Record<string, unknown>).brand_name) {
+      brandName = (data as Record<string, unknown>).brand_name as string;
+    }
+  }
+
+  // keyword: from eval_metadata
   for (const agent of validResults) {
+    if (keyword) break;
     const meta = agent.eval_report.eval_metadata;
-    if (meta.brand_name) brandName = meta.brand_name as string;
-    if (!brandName && agent.table_brand_name) brandName = agent.table_brand_name;
-    if (meta.target_prompt) keyword = meta.target_prompt as string;
-    if (meta.query) keyword = meta.query as string;
-    if (meta.primary_keyword) keyword ??= meta.primary_keyword as string;
+    keyword =
+      (meta.target_prompt as string) ??
+      (meta.query as string) ??
+      (meta.primary_keyword as string) ??
+      (meta.page_url as string) ??
+      (meta.own_page_url as string) ??
+      null;
   }
 
   // Strip internal fields from agent data before returning
@@ -92,29 +109,64 @@ export async function fetchEvalRun(
 }
 
 /**
- * Fetches all eval IDs from the first agent's table (they share IDs)
+ * Fetches all eval IDs across all agent tables in the system group.
+ * Merges and deduplicates by ID, keeping the earliest created_at and
+ * any brand_name found.
  */
 export async function fetchEvalIds(
   agents: AgentRegistryEntry[]
 ): Promise<Array<{ id: string; created_at: string; brand_name?: string }>> {
   if (agents.length === 0) return [];
 
-  // Use the content brief table if available (has brand_name), otherwise first agent
-  const briefAgent = agents.find((a) => a.table_name.includes("content_brief"));
-  const primaryAgent = briefAgent ?? agents[0];
+  // Deduplicate tables (multiple agents may share the same table)
+  const uniqueTables = Array.from(
+    new Map(agents.map((a) => [a.table_name, a])).values()
+  );
 
-  const selectFields = ["id", "created_at"];
-  if (primaryAgent.table_name.includes("content_brief")) {
-    selectFields.push("brand_name");
+  // Fetch IDs from all agent tables in parallel
+  const allResults = await Promise.all(
+    uniqueTables.map(async (agent) => {
+      const hasBrandName =
+        agent.table_name.includes("content_brief") ||
+        agent.table_name.includes("pdp");
+      const selectFields = hasBrandName
+        ? "id,created_at,brand_name"
+        : "id,created_at";
+
+      const { data, error } = await supabase
+        .from(agent.table_name)
+        .select(selectFields)
+        .order("created_at", { ascending: false });
+
+      if (error || !data) return [];
+      return data as Array<{ id: string; created_at: string; brand_name?: string }>;
+    })
+  );
+
+  // Merge and deduplicate by ID
+  const idMap = new Map<string, { id: string; created_at: string; brand_name?: string }>();
+
+  for (const rows of allResults) {
+    for (const row of rows) {
+      const existing = idMap.get(row.id);
+      if (!existing) {
+        idMap.set(row.id, row);
+      } else {
+        // Keep the earliest created_at and any brand_name found
+        if (row.created_at < existing.created_at) {
+          existing.created_at = row.created_at;
+        }
+        if (row.brand_name && !existing.brand_name) {
+          existing.brand_name = row.brand_name;
+        }
+      }
+    }
   }
 
-  const { data, error } = await supabase
-    .from(primaryAgent.table_name)
-    .select(selectFields.join(","))
-    .order("created_at", { ascending: false });
-
-  if (error || !data) return [];
-  return data as unknown as Array<{ id: string; created_at: string; brand_name?: string }>;
+  // Sort by created_at descending
+  return Array.from(idMap.values()).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 }
 
 /**

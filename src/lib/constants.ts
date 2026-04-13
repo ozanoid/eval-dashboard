@@ -54,4 +54,8 @@ export const AGENT_COLORS: Record<string, string> = {
   faq_generation: "var(--color-agent-faq-gen)",
   faq_quality: "var(--color-agent-faq-qual)",
   new_citation_readiness: "var(--color-agent-citation-readiness)",
+  owned_pdp_analysis_agent: "var(--color-agent-owned-pdp-analysis)",
+  owned_pdp_brief_agent: "var(--color-agent-owned-pdp-brief)",
+  comp_pdp_analysis_agent: "var(--color-agent-comp-pdp-analysis)",
+  comp_pdp_brief_agent: "var(--color-agent-comp-pdp-brief)",
 };

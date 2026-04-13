@@ -26,7 +26,10 @@ export function EvalGrid({
           eval={ev}
           systemGroup={systemGroup}
           isFocused={i === focusedIndex}
-          scoreHistory={ev.brand_name ? scoreHistoryMap?.get(ev.brand_name) : undefined}
+          scoreHistory={
+            (ev.brand_name ? scoreHistoryMap?.get(ev.brand_name) : undefined) ??
+            (ev.keyword ? scoreHistoryMap?.get(ev.keyword) : undefined)
+          }
           isSelected={selectedIds?.has(ev.id)}
           onToggleSelect={onToggleSelect ? () => onToggleSelect(ev.id) : undefined}
         />

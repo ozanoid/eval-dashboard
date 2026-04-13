@@ -40,6 +40,12 @@
   --color-agent-faq-qual: #ec4899;
   --color-agent-citation-readiness: #06b6d4;
 
+  /* PDP Brief System agent colors */
+  --color-agent-owned-pdp-analysis: #06b6d4;
+  --color-agent-owned-pdp-brief: #f97316;
+  --color-agent-comp-pdp-analysis: #6366f1;
+  --color-agent-comp-pdp-brief: #f43f5e;
+
   /* Accent */
   --color-accent-primary: #6366f1;
   --color-accent-success: #10b981;
