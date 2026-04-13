@@ -126,20 +126,13 @@ export async function fetchEvalIds(
   // Fetch IDs from all agent tables in parallel
   const allResults = await Promise.all(
     uniqueTables.map(async (agent) => {
-      const hasBrandName =
-        agent.table_name.includes("content_brief") ||
-        agent.table_name.includes("pdp");
-      const selectFields = hasBrandName
-        ? "id,created_at,brand_name"
-        : "id,created_at";
-
       const { data, error } = await supabase
         .from(agent.table_name)
-        .select(selectFields)
+        .select("id,created_at,brand_name")
         .order("created_at", { ascending: false });
 
       if (error || !data) return [];
-      return data as Array<{ id: string; created_at: string; brand_name?: string }>;
+      return data as unknown as Array<{ id: string; created_at: string; brand_name?: string }>;
     })
   );
 
