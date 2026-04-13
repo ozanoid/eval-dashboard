@@ -35,9 +35,15 @@ export function useBrandScoreHistory(
 
       await Promise.all(
         uniqueTables.map(async (agent) => {
+          const hasBrandCol = agent.table_name.includes("content_brief")
+            || agent.table_name.includes("pdp")
+            || agent.table_name.includes("citation_readiness");
+          const cols = hasBrandCol
+            ? `id, created_at, brand_name, ${agent.eval_report_column}`
+            : `id, created_at, ${agent.eval_report_column}`;
           const { data: rows } = await supabase
             .from(agent.table_name)
-            .select(`id, created_at, brand_name, ${agent.eval_report_column}`)
+            .select(cols)
             .order("created_at", { ascending: true });
 
           if (!rows) return;

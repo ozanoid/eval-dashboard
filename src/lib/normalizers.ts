@@ -67,9 +67,13 @@ export async function fetchEvalRun(
   let keyword: string | null = null;
   let createdAt = validResults[0].created_at;
 
-  // Fetch brand_name from table columns
+  // Fetch brand_name from table columns (only tables that have the column)
   for (const agent of agents) {
     if (brandName) break;
+    const hasBrandCol = agent.table_name.includes("content_brief")
+      || agent.table_name.includes("pdp")
+      || agent.table_name.includes("citation_readiness");
+    if (!hasBrandCol) continue;
     const { data } = await supabase
       .from(agent.table_name)
       .select("brand_name")
@@ -126,9 +130,13 @@ export async function fetchEvalIds(
   // Fetch IDs from all agent tables in parallel
   const allResults = await Promise.all(
     uniqueTables.map(async (agent) => {
+      const hasBrandCol = agent.table_name.includes("content_brief")
+        || agent.table_name.includes("pdp")
+        || agent.table_name.includes("citation_readiness");
+      const cols = hasBrandCol ? "id,created_at,brand_name" : "id,created_at";
       const { data, error } = await supabase
         .from(agent.table_name)
-        .select("id,created_at,brand_name")
+        .select(cols)
         .order("created_at", { ascending: false });
 
       if (error || !data) return [];

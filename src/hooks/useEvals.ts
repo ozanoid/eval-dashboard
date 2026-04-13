@@ -28,9 +28,15 @@ export function useEvals(systemGroup: string, agents: AgentRegistryEntry[]) {
       // Fetch ALL data from ALL agent tables in parallel (no N+1)
       const allAgentData = await Promise.all(
         groupAgents.map(async (agent) => {
+          const hasBrandCol = agent.table_name.includes("content_brief")
+            || agent.table_name.includes("pdp")
+            || agent.table_name.includes("citation_readiness");
+          const cols = hasBrandCol
+            ? `id, created_at, brand_name, ${agent.eval_report_column}`
+            : `id, created_at, ${agent.eval_report_column}`;
           const { data } = await supabase
             .from(agent.table_name)
-            .select(`id, created_at, brand_name, ${agent.eval_report_column}`)
+            .select(cols)
             .order("created_at", { ascending: false });
 
           if (!data) return { agent, rows: new Map<string, Record<string, unknown>>() };
